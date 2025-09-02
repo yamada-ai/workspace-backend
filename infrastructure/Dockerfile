@@ -1,16 +1,16 @@
 # ---------- build stage ----------
-FROM golang:1.22 AS build
+FROM golang:1.23 AS build
 WORKDIR /app
 
 # 依存解決をキャッシュさせる
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 
 # 残りのソース
 COPY . .
 
 # 本体バイナリ（ここでは "work-tracker" を想定）
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/work-tracker ./cmd/work-tracker
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/work-tracker ./main/work-tracker
 
 # ---------- runtime stage ----------
 FROM gcr.io/distroless/base-debian12
