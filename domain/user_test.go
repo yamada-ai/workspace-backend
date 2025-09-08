@@ -10,7 +10,7 @@ func fixedNow() time.Time {
 }
 
 func TestNewUser_Success(t *testing.T) {
-	u, err := NewUser("  Alice  ", RoleUser, fixedNow)
+	u, err := NewUser("  Alice  ", Tier1, fixedNow)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -20,8 +20,8 @@ func TestNewUser_Success(t *testing.T) {
 	if u.Name != "Alice" {
 		t.Errorf("trim expected: 'Alice', got '%s'", u.Name)
 	}
-	if u.Role != RoleUser {
-		t.Errorf("role mismatch")
+	if u.Tier != Tier1 {
+		t.Errorf("tier mismatch")
 	}
 	if !u.CreatedAt.Equal(fixedNow()) || !u.UpdatedAt.Equal(fixedNow()) {
 		t.Errorf("timestamps should be fixed to test time")
@@ -32,7 +32,7 @@ func TestNewUser_Success(t *testing.T) {
 }
 
 func TestNewUser_EmptyName(t *testing.T) {
-	_, err := NewUser("   ", RoleUser, fixedNow)
+	_, err := NewUser("   ", Tier2, fixedNow)
 	if err == nil {
 		t.Fatalf("expected error for empty name")
 	}
@@ -41,18 +41,18 @@ func TestNewUser_EmptyName(t *testing.T) {
 	}
 }
 
-func TestNewUser_InvalidRole(t *testing.T) {
-	_, err := NewUser("Bob", Role(999), fixedNow)
+func TestNewUser_InvalidTier(t *testing.T) {
+	_, err := NewUser("Bob", Tier(999), fixedNow)
 	if err == nil {
-		t.Fatalf("expected error for invalid role")
+		t.Fatalf("expected error for invalid tier")
 	}
-	if err != ErrInvalidRole {
-		t.Fatalf("expected ErrInvalidRole, got %v", err)
+	if err != ErrInvalidTier {
+		t.Fatalf("expected ErrInvalidTier, got %v", err)
 	}
 }
 
 func TestUser_Touch(t *testing.T) {
-	u, _ := NewUser("Carol", RoleAdmin, fixedNow)
+	u, _ := NewUser("Carol", Tier3, fixedNow)
 	later := func() time.Time { return fixedNow().Add(5 * time.Minute) }
 	u.Touch(later)
 	if !u.UpdatedAt.Equal(later()) {

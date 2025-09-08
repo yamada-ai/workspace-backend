@@ -6,41 +6,26 @@ import (
 	"time"
 )
 
-// 役割の定義（必要に応じて拡張）
-type Role int
-
-const (
-	RoleUnknown Role = iota
-	RoleUser
-	RoleAdmin
-)
-
-func (r Role) Valid() bool {
-	return r == RoleUser || r == RoleAdmin
-}
-
 var (
 	ErrEmptyUserName = errors.New("user name must not be empty")
-	ErrInvalidRole   = errors.New("invalid role")
+	ErrInvalidTier   = errors.New("invalid tier")
 )
 
-// User 集約（最小）
 type User struct {
 	ID        int64
 	Name      string
-	Role      Role
+	Tier      Tier
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-// ファクトリ：不変条件を満たした User を作る
-func NewUser(name string, role Role, now func() time.Time) (*User, error) {
+func NewUser(name string, tier Tier, now func() time.Time) (*User, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, ErrEmptyUserName
 	}
-	if !role.Valid() {
-		return nil, ErrInvalidRole
+	if !tier.Valid() {
+		return nil, ErrInvalidTier
 	}
 	t := time.Now
 	if now != nil {
@@ -49,7 +34,7 @@ func NewUser(name string, role Role, now func() time.Time) (*User, error) {
 	nowT := t()
 	return &User{
 		Name:      name,
-		Role:      role,
+		Tier:      tier,
 		CreatedAt: nowT,
 		UpdatedAt: nowT,
 	}, nil
@@ -69,8 +54,8 @@ func (u *User) Validate() error {
 	if strings.TrimSpace(u.Name) == "" {
 		return ErrEmptyUserName
 	}
-	if !u.Role.Valid() {
-		return ErrInvalidRole
+	if !u.Tier.Valid() {
+		return ErrInvalidTier
 	}
 	return nil
 }
