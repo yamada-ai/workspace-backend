@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: Workspace Backend API
+  version: 1.0.0
+  description: API for 24H MMO online coworking space
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+
+  /api/commands/join:
+    post:
+      summary: Join command (/in)
+      operationId: joinCommand
+      description: User joins the workspace and starts a work session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinCommandRequest'
+      responses:
+        '200':
+          description: Successfully joined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinCommandResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    JoinCommandRequest:
+      type: object
+      required:
+        - user_name
+        - tier
+      properties:
+        user_name:
+          type: string
+          description: User name from Twitch/YouTube
+          minLength: 1
+          maxLength: 100
+          example: yamada
+        work_name:
+          type: string
+          description: Optional work description
+          maxLength: 200
+          example: 論文執筆
+        tier:
+          type: integer
+          description: User tier (1-3)
+          minimum: 1
+          maximum: 3
+          example: 1
+
+    JoinCommandResponse:
+      type: object
+      required:
+        - session_id
+        - user_id
+        - start_time
+        - planned_end
+      properties:
+        session_id:
+          type: integer
+          format: int64
+          description: Created session ID
+          example: 123
+        user_id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 45
+        work_name:
+          type: string
+          description: Work name (may be empty)
+          example: 論文執筆
+        start_time:
+          type: string
+          format: date-time
+          description: Session start time
+          example: 2025-10-09T14:30:00Z
+        planned_end:
+          type: string
+          format: date-time
+          description: Planned end time
+          example: 2025-10-09T15:30:00Z
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: Invalid tier value
