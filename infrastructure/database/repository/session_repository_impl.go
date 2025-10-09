@@ -13,9 +13,6 @@ import (
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/sqlc"
 )
 
-var (
-	ErrSessionNotFound = errors.New("session not found")
-)
 
 // Ensure sessionRepositoryImpl implements domain.SessionRepository
 var _ domainRepo.SessionRepository = (*sessionRepositoryImpl)(nil)
@@ -27,6 +24,16 @@ type sessionRepositoryImpl struct {
 // NewSessionRepository creates a new session repository implementation
 func NewSessionRepository(queries *sqlc.Queries) domainRepo.SessionRepository {
 	return &sessionRepositoryImpl{queries: queries}
+}
+
+// Save creates or updates a session
+func (r *sessionRepositoryImpl) Save(ctx context.Context, session *domain.Session) error {
+	if session.ID == 0 {
+		// Create new session
+		return r.Create(ctx, session)
+	}
+	// Update existing session
+	return r.Update(ctx, session)
 }
 
 func (r *sessionRepositoryImpl) Create(ctx context.Context, session *domain.Session) error {
@@ -61,7 +68,7 @@ func (r *sessionRepositoryImpl) FindByID(ctx context.Context, id int64) (*domain
 	session, err := r.queries.FindSessionByID(ctx, int32(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrSessionNotFound
+			return nil, domain.ErrSessionNotFound
 		}
 		return nil, err
 	}
@@ -72,7 +79,7 @@ func (r *sessionRepositoryImpl) FindActiveByUserID(ctx context.Context, userID i
 	session, err := r.queries.FindActiveSessionByUserID(ctx, int32(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrSessionNotFound
+			return nil, domain.ErrSessionNotFound
 		}
 		return nil, err
 	}

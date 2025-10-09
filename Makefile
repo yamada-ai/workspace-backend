@@ -11,11 +11,21 @@ gen-sqlc: ## Generate sqlc code
 gen-openapi: ## Generate OpenAPI code
 	@~/go/bin/oapi-codegen -package dto -generate types,chi-server -o presentation/http/dto/server.gen.go shared/api/openapi.yaml
 
-test: ## Run tests
-	go test -v -race -cover ./...
+test: ## Run all tests (unit + integration)
+	DATABASE_URL='postgres://postgres:postgres@localhost:5432/workspace_test?sslmode=disable' \
+		go test -v -p 1 -race -cover ./...
 
-test-short: ## Run short tests (skip integration tests)
-	go test -v -short ./...
+test-unit: ## Run only unit tests (fast, no DB required)
+	go test -v -short -race -cover ./...
+
+test-integration: ## Run only integration tests (requires DB)
+	DATABASE_URL='postgres://postgres:postgres@localhost:5432/workspace_test?sslmode=disable' \
+		go test -v -p 1 -race -cover -run Integration ./...
+
+test-coverage: ## Run tests with coverage report
+	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 lint: ## Run linter
 	golangci-lint run

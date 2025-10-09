@@ -43,11 +43,23 @@ func (m *mockUserRepository) Save(ctx context.Context, user *domain.User) error 
 
 // Mock SessionRepository
 type mockSessionRepository struct {
+	saveFn               func(ctx context.Context, session *domain.Session) error
 	createFn             func(ctx context.Context, session *domain.Session) error
 	findByIDFn           func(ctx context.Context, id int64) (*domain.Session, error)
 	findActiveByUserIDFn func(ctx context.Context, userID int64) (*domain.Session, error)
 	updateFn             func(ctx context.Context, session *domain.Session) error
 	listByUserIDFn       func(ctx context.Context, userID int64, limit, offset int32) ([]*domain.Session, error)
+}
+
+func (m *mockSessionRepository) Save(ctx context.Context, session *domain.Session) error {
+	if m.saveFn != nil {
+		return m.saveFn(ctx, session)
+	}
+	// Simulate ID assignment
+	if session.ID == 0 {
+		session.ID = 100
+	}
+	return nil
 }
 
 func (m *mockSessionRepository) Create(ctx context.Context, session *domain.Session) error {

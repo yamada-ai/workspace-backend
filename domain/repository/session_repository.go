@@ -8,6 +8,11 @@ import (
 
 // SessionRepository defines the interface for session persistence operations
 type SessionRepository interface {
+	// Save creates or updates a session (upsert)
+	// If session.ID == 0, creates a new session and sets the ID
+	// Otherwise, updates the existing session
+	Save(ctx context.Context, session *domain.Session) error
+
 	// Create creates a new session
 	Create(ctx context.Context, session *domain.Session) error
 
