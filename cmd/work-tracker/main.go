@@ -30,6 +30,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Run database migrations
+	if err := database.RunMigrations(cfg.DatabaseURL, "migrations"); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
 	// Connect to database
 	pool, err := database.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {

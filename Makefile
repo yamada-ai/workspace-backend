@@ -1,4 +1,4 @@
-.PHONY: help gen gen-sqlc gen-openapi test lint run migrate-up migrate-down migrate-create
+.PHONY: help gen gen-sqlc gen-openapi test lint run migrate-up migrate-down migrate-create docker-up docker-down docker-logs dev-up build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -6,10 +6,10 @@ help: ## Show this help
 gen: gen-sqlc gen-openapi ## Generate all code (sqlc + OpenAPI)
 
 gen-sqlc: ## Generate sqlc code
-	@bash scripts/gen_sqlc.sh
+	@~/go/bin/sqlc generate
 
 gen-openapi: ## Generate OpenAPI code
-	@bash scripts/gen_openapi.sh
+	@~/go/bin/oapi-codegen -package dto -generate types,chi-server -o presentation/http/dto/server.gen.go shared/api/openapi.yaml
 
 test: ## Run tests
 	go test -v -race -cover ./...
@@ -20,14 +20,34 @@ test-short: ## Run short tests (skip integration tests)
 lint: ## Run linter
 	golangci-lint run
 
-run: ## Run the application
-	go run cmd/work-tracker/main.go
+build: ## Build the application
+	go build -o bin/work-tracker ./cmd/work-tracker
+
+run: ## Run the application locally (auto-migrates DB)
+	DATABASE_URL='postgres://postgres:postgres@localhost:5432/workspace?sslmode=disable' \
+		go run cmd/work-tracker/main.go
 
 migrate-up: ## Run database migrations up
-	migrate -path migrations -database "postgresql://localhost:5432/workspace?sslmode=disable" up
+	@bash scripts/migrate.sh
 
 migrate-down: ## Run database migrations down
-	migrate -path migrations -database "postgresql://localhost:5432/workspace?sslmode=disable" down
+	migrate -path migrations -database "${DATABASE_URL:-postgres://postgres:postgres@localhost:5432/workspace?sslmode=disable}" down
 
 migrate-create: ## Create a new migration (usage: make migrate-create NAME=add_users)
 	migrate create -ext sql -dir migrations -seq $(NAME)
+
+# Docker commands
+docker-up: ## Start all services with Docker Compose
+	docker compose -f infrastructure/compose.dev.yml up -d
+
+docker-down: ## Stop all services
+	docker compose -f infrastructure/compose.dev.yml down
+
+docker-logs: ## Show logs from all services
+	docker compose -f infrastructure/compose.dev.yml logs -f
+
+docker-build: ## Build Docker image
+	docker compose -f infrastructure/compose.dev.yml build
+
+dev-up: ## Start development environment (DB + migrations)
+	@bash scripts/dev_up.sh

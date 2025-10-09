@@ -1,20 +1,33 @@
 # ---------- build stage ----------
-FROM golang:1.23 AS build
+FROM golang:1.23-alpine AS builder
 WORKDIR /app
 
-# 依存解決をキャッシュさせる
-COPY go.mod ./
+# Install dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
 RUN go mod download
 
-# 残りのソース
+# Copy source code
 COPY . .
 
-# 本体バイナリ（ここでは "work-tracker" を想定）
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/work-tracker ./main/work-tracker
+# Build binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /work-tracker ./cmd/work-tracker
 
 # ---------- runtime stage ----------
-FROM gcr.io/distroless/base-debian12
-WORKDIR /app
-COPY --from=build /out/work-tracker /usr/local/bin/work-tracker
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /root/
+
+# Copy binary from builder
+COPY --from=builder /work-tracker .
+
+# Copy migrations (for reference)
+COPY migrations ./migrations
+
 EXPOSE 8000
-ENTRYPOINT ["/usr/local/bin/work-tracker"]
+
+CMD ["./work-tracker"]
