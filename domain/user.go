@@ -9,6 +9,7 @@ import (
 var (
 	ErrEmptyUserName = errors.New("user name must not be empty")
 	ErrInvalidTier   = errors.New("invalid tier")
+	ErrUserNotFound  = errors.New("user not found")
 )
 
 type User struct {
