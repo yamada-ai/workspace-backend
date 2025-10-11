@@ -168,7 +168,9 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		defer resp1.Body.Close()
 
 		var response1 dto.JoinCommandResponse
-		json.NewDecoder(resp1.Body).Decode(&response1)
+		if err := json.NewDecoder(resp1.Body).Decode(&response1); err != nil {
+			t.Fatalf("Failed to decode first response: %v", err)
+		}
 
 		// Second request: same user tries to join again
 		reqBody2 := dto.JoinCommandRequest{
@@ -370,7 +372,9 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 
 		resp1, _ := http.Post(server.URL+"/api/commands/join", "application/json", bytes.NewReader(bodyBytes1))
 		var response1 dto.JoinCommandResponse
-		json.NewDecoder(resp1.Body).Decode(&response1)
+		if err := json.NewDecoder(resp1.Body).Decode(&response1); err != nil {
+			t.Fatalf("Failed to decode first response: %v", err)
+		}
 		resp1.Body.Close()
 
 		// Verify initial state
@@ -395,7 +399,9 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 
 		resp2, _ := http.Post(server.URL+"/api/commands/join", "application/json", bytes.NewReader(bodyBytes2))
 		var response2 dto.JoinCommandResponse
-		json.NewDecoder(resp2.Body).Decode(&response2)
+		if err := json.NewDecoder(resp2.Body).Decode(&response2); err != nil {
+			t.Fatalf("Failed to decode second response: %v", err)
+		}
 		resp2.Body.Close()
 
 		// Verify new session was created

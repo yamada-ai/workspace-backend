@@ -6,10 +6,10 @@ help: ## Show this help
 gen: gen-sqlc gen-openapi ## Generate all code (sqlc + OpenAPI)
 
 gen-sqlc: ## Generate sqlc code
-	@~/go/bin/sqlc generate
+	@bash scripts/gen_sqlc.sh
 
 gen-openapi: ## Generate OpenAPI code
-	@~/go/bin/oapi-codegen -package dto -generate types,chi-server -o presentation/http/dto/server.gen.go shared/api/openapi.yaml
+	@bash scripts/gen_openapi.sh
 
 test: ## Run all tests (unit + integration)
 	DATABASE_URL='postgres://postgres:postgres@localhost:5432/workspace_test?sslmode=disable' \

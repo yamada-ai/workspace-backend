@@ -74,14 +74,20 @@ func (h *CommandHandler) JoinCommand(w http.ResponseWriter, r *http.Request) {
 func (h *CommandHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	if _, err := w.Write([]byte("ok")); err != nil {
+		// Log error but don't fail the health check since headers are already sent
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+	}
 }
 
 // Helper functions
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// Log error - headers already sent, so we can't change response
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
