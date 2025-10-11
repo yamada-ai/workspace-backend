@@ -8,11 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/yamada-ai/workspace-backend/domain"
 	domainRepo "github.com/yamada-ai/workspace-backend/domain/repository"
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/sqlc"
 )
-
 
 // Ensure sessionRepositoryImpl implements domain.SessionRepository
 var _ domainRepo.SessionRepository = (*sessionRepositoryImpl)(nil)
@@ -48,13 +48,13 @@ func (r *sessionRepositoryImpl) Create(ctx context.Context, session *domain.Sess
 	}
 
 	created, err := r.queries.CreateSession(ctx, sqlc.CreateSessionParams{
-		UserID:      int32(session.UserID),
-		WorkName:    workName,
-		StartTime:   pgtype.Timestamp{Time: session.StartTime, Valid: true},
-		PlannedEnd:  pgtype.Timestamp{Time: session.PlannedEnd, Valid: true},
-		IconID:      iconID,
-		CreatedAt:   pgtype.Timestamp{Time: session.CreatedAt, Valid: true},
-		UpdatedAt:   pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
+		UserID:     int32(session.UserID),
+		WorkName:   workName,
+		StartTime:  pgtype.Timestamp{Time: session.StartTime, Valid: true},
+		PlannedEnd: pgtype.Timestamp{Time: session.PlannedEnd, Valid: true},
+		IconID:     iconID,
+		CreatedAt:  pgtype.Timestamp{Time: session.CreatedAt, Valid: true},
+		UpdatedAt:  pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
 	})
 	if err != nil {
 		return err

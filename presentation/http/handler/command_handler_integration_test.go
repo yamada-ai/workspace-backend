@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/repository"
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/sqlc"
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/testutil"
@@ -63,7 +64,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Check status code
 		if resp.StatusCode != http.StatusOK {
@@ -121,7 +122,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Check status code
 		if resp.StatusCode != http.StatusOK {
@@ -165,7 +166,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send first request: %v", err)
 		}
-		defer resp1.Body.Close()
+		defer func() { _ = resp1.Body.Close() }()
 
 		var response1 dto.JoinCommandResponse
 		if err := json.NewDecoder(resp1.Body).Decode(&response1); err != nil {
@@ -188,7 +189,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send second request: %v", err)
 		}
-		defer resp2.Body.Close()
+		defer func() { _ = resp2.Body.Close() }()
 
 		// Check status code
 		if resp2.StatusCode != http.StatusOK {
@@ -233,7 +234,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Should return 400 Bad Request
 		if resp.StatusCode != http.StatusBadRequest {
@@ -260,7 +261,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Should return 400 Bad Request
 		if resp.StatusCode != http.StatusBadRequest {
@@ -294,7 +295,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 					errors <- err
 					return
 				}
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 
 				var response dto.JoinCommandResponse
 				if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -375,7 +376,7 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 		if err := json.NewDecoder(resp1.Body).Decode(&response1); err != nil {
 			t.Fatalf("Failed to decode first response: %v", err)
 		}
-		resp1.Body.Close()
+		_ = resp1.Body.Close()
 
 		// Verify initial state
 		if response1.SessionId == 0 {
@@ -402,7 +403,7 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 		if err := json.NewDecoder(resp2.Body).Decode(&response2); err != nil {
 			t.Fatalf("Failed to decode second response: %v", err)
 		}
-		resp2.Body.Close()
+		_ = resp2.Body.Close()
 
 		// Verify new session was created
 		if response2.SessionId == response1.SessionId {

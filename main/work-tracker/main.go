@@ -9,7 +9,9 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "ok")
+		if _, err := fmt.Fprint(w, "ok"); err != nil {
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		}
 	})
 	addr := ":8000"
 	log.Printf("work-tracker listening on %s", addr)

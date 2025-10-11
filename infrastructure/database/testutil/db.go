@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/yamada-ai/workspace-backend/infrastructure/database"
 )
 

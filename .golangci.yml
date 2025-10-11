@@ -1,0 +1,61 @@
+run:
+  timeout: 5m
+  tests: true
+  skip-files:
+    - ".*\\.gen\\.go$"
+    - ".*\\.pb\\.go$"
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis checks
+    - typecheck     # Type-check Go code
+    - unused        # Check for unused code
+    - gofmt         # Check code formatting
+    - goimports     # Check import formatting
+    - misspell      # Check for misspelled English words
+    - revive        # Drop-in replacement for golint
+  disable: []
+
+linters-settings:
+  errcheck:
+    # Don't check these functions
+    exclude-functions:
+      - (io.Closer).Close
+    # Report errors in defer statements
+    check-type-assertions: false
+    check-blank: false
+
+  govet:
+    enable-all: true
+    disable:
+      - shadow        # Allow variable shadowing
+      - fieldalignment # Don't enforce field alignment
+
+  revive:
+    confidence: 0.8
+
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: github.com/yamada-ai/workspace-backend
+
+issues:
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+
+  # Exclude some linters from running on tests
+  exclude-rules:
+    # Allow unused parameters in test functions
+    - path: _test\.go
+      linters:
+        - unused
+    # Allow dot imports in tests (for testify)
+    - path: _test\.go
+      text: "dot imports"

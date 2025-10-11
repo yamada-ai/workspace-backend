@@ -14,15 +14,15 @@ var (
 
 // Session represents a work session
 type Session struct {
-	ID          int64
-	UserID      int64
-	WorkName    string
-	StartTime   time.Time
-	PlannedEnd  time.Time
-	ActualEnd   *time.Time // nil if session is still active
-	IconID      *int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID         int64
+	UserID     int64
+	WorkName   string
+	StartTime  time.Time
+	PlannedEnd time.Time
+	ActualEnd  *time.Time // nil if session is still active
+	IconID     *int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // NewSession creates a new work session

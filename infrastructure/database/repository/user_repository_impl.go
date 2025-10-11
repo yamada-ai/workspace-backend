@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/yamada-ai/workspace-backend/domain"
 	domainRepo "github.com/yamada-ai/workspace-backend/domain/repository"
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/sqlc"

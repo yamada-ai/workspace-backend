@@ -22,13 +22,13 @@ type JoinCommandInput struct {
 
 // JoinCommandOutput represents the output of join command
 type JoinCommandOutput struct {
-	SessionID   int64
-	UserID      int64
-	WorkName    string
-	StartTime   time.Time
-	PlannedEnd  time.Time
-	IsNewUser   bool
-	AlreadyIn   bool // true if user already has an active session
+	SessionID  int64
+	UserID     int64
+	WorkName   string
+	StartTime  time.Time
+	PlannedEnd time.Time
+	IsNewUser  bool
+	AlreadyIn  bool // true if user already has an active session
 }
 
 // JoinCommandUseCase handles the /in command logic
