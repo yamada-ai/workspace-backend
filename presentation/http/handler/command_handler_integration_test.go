@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -296,6 +297,11 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 					return
 				}
 				defer func() { _ = resp.Body.Close() }()
+
+				if resp.StatusCode != http.StatusOK {
+					errors <- fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+					return
+				}
 
 				var response dto.JoinCommandResponse
 				if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {

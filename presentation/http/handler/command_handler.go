@@ -30,6 +30,12 @@ func (h *CommandHandler) JoinCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate user_name
+	if req.UserName == "" {
+		writeError(w, http.StatusBadRequest, "user_name is required")
+		return
+	}
+
 	// Validate tier
 	tier, err := domain.ParseTier(string(rune(req.Tier + '0'))) // Convert int to "1", "2", "3"
 	if err != nil {
