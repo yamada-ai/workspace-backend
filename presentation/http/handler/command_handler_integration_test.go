@@ -31,9 +31,8 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	testutil.CleanupTables(t, pool)
 
 	// Create dependencies
-	queries := sqlc.New(pool)
-	userRepo := repository.NewUserRepository(queries)
-	sessionRepo := repository.NewSessionRepository(queries)
+	userRepo := repository.NewUserRepositoryWithPool(pool)
+	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo)
 	commandHandler := handler.NewCommandHandler(joinUseCase)
 
@@ -273,13 +272,24 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	t.Run("ConcurrentRequests_SameUser", func(t *testing.T) {
 		testutil.CleanupTables(t, pool)
 
-		// Simulate concurrent requests from the same user
+		// Simulate concurrent requests from the same user with start barrier
 		const numRequests = 5
 		results := make(chan dto.JoinCommandResponse, numRequests)
 		errors := make(chan error, numRequests)
 
+		// Create HTTP client with timeout
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+
+		// Start barrier to ensure truly concurrent execution
+		start := make(chan struct{})
+
 		for i := 0; i < numRequests; i++ {
 			go func(workIndex int) {
+				// Wait for start signal
+				<-start
+
 				reqBody := dto.JoinCommandRequest{
 					UserName: "concurrent_user",
 					Tier:     1,
@@ -287,7 +297,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 				}
 				bodyBytes, _ := json.Marshal(reqBody)
 
-				resp, err := http.Post(
+				resp, err := client.Post(
 					server.URL+"/api/commands/join",
 					"application/json",
 					bytes.NewReader(bodyBytes),
@@ -313,6 +323,9 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 			}(i)
 		}
 
+		// Signal all goroutines to start simultaneously
+		close(start)
+
 		// Collect results
 		responses := make([]dto.JoinCommandResponse, 0, numRequests)
 		for i := 0; i < numRequests; i++ {
@@ -321,9 +334,14 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 				responses = append(responses, resp)
 			case err := <-errors:
 				t.Errorf("Request failed: %v", err)
-			case <-time.After(5 * time.Second):
+			case <-time.After(10 * time.Second):
 				t.Fatal("Timeout waiting for concurrent requests")
 			}
+		}
+
+		// Verify we got all responses
+		if len(responses) == 0 {
+			t.Fatal("No successful responses received")
 		}
 
 		// All responses should have the same session_id
@@ -351,9 +369,8 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	testutil.CleanupTables(t, pool)
 
 	// Create dependencies
-	queries := sqlc.New(pool)
-	userRepo := repository.NewUserRepository(queries)
-	sessionRepo := repository.NewSessionRepository(queries)
+	userRepo := repository.NewUserRepositoryWithPool(pool)
+	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo)
 	commandHandler := handler.NewCommandHandler(joinUseCase)
 

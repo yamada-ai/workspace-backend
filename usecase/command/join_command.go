@@ -52,8 +52,19 @@ func NewJoinCommandUseCase(
 
 // Execute executes the join command
 func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInput) (*JoinCommandOutput, error) {
-	// 1. Find or create user
-	user, err := uc.userRepo.FindByName(ctx, input.UserName)
+	// Start transaction
+	tx, err := uc.userRepo.BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	// 1. Find or create user within transaction
+	user, err := uc.userRepo.FindByNameWithTx(ctx, tx, input.UserName)
 	isNewUser := false
 	if err == domain.ErrUserNotFound {
 		// Create new user
@@ -61,18 +72,30 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 		if err != nil {
 			return nil, err
 		}
-		if err := uc.userRepo.Save(ctx, user); err != nil {
-			return nil, err
+		if err := uc.userRepo.SaveWithTx(ctx, tx, user); err != nil {
+			if err == domain.ErrUserAlreadyExists {
+				// Another goroutine created the user, retry find
+				user, err = uc.userRepo.FindByNameWithTx(ctx, tx, input.UserName)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
+		} else {
+			isNewUser = true
 		}
-		isNewUser = true
 	} else if err != nil {
 		return nil, err
 	}
 
 	// 2. Check if user already has an active session
-	activeSession, err := uc.sessionRepo.FindActiveByUserID(ctx, user.ID)
+	activeSession, err := uc.sessionRepo.FindActiveByUserIDWithTx(ctx, tx, user.ID)
 	if err == nil {
-		// User already has an active session
+		// User already has an active session, commit and return
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
+		}
 		return &JoinCommandOutput{
 			SessionID:  activeSession.ID,
 			UserID:     user.ID,
@@ -82,6 +105,8 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 			IsNewUser:  isNewUser,
 			AlreadyIn:  true,
 		}, nil
+	} else if err != domain.ErrSessionNotFound {
+		return nil, err
 	}
 
 	// 3. Create new session
@@ -90,7 +115,12 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 		return nil, err
 	}
 
-	if err := uc.sessionRepo.Create(ctx, session); err != nil {
+	if err := uc.sessionRepo.CreateWithTx(ctx, tx, session); err != nil {
+		return nil, err
+	}
+
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 

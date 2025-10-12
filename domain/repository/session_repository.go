@@ -27,4 +27,10 @@ type SessionRepository interface {
 
 	// ListByUserID retrieves sessions for a user with pagination
 	ListByUserID(ctx context.Context, userID int64, limit, offset int32) ([]*domain.Session, error)
+
+	// FindActiveByUserIDWithTx retrieves the active session within a transaction
+	FindActiveByUserIDWithTx(ctx context.Context, tx Tx, userID int64) (*domain.Session, error)
+
+	// CreateWithTx creates a new session within a transaction
+	CreateWithTx(ctx context.Context, tx Tx, session *domain.Session) error
 }

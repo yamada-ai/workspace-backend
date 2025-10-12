@@ -7,13 +7,37 @@ import (
 	"time"
 
 	"github.com/yamada-ai/workspace-backend/domain"
+	"github.com/yamada-ai/workspace-backend/domain/repository"
 )
+
+// Mock Transaction
+type mockTx struct {
+	commitFn   func(ctx context.Context) error
+	rollbackFn func(ctx context.Context) error
+}
+
+func (m *mockTx) Commit(ctx context.Context) error {
+	if m.commitFn != nil {
+		return m.commitFn(ctx)
+	}
+	return nil
+}
+
+func (m *mockTx) Rollback(ctx context.Context) error {
+	if m.rollbackFn != nil {
+		return m.rollbackFn(ctx)
+	}
+	return nil
+}
 
 // Mock UserRepository
 type mockUserRepository struct {
-	findByNameFn func(ctx context.Context, name string) (*domain.User, error)
-	findByIDFn   func(ctx context.Context, id int64) (*domain.User, error)
-	saveFn       func(ctx context.Context, user *domain.User) error
+	findByNameFn       func(ctx context.Context, name string) (*domain.User, error)
+	findByIDFn         func(ctx context.Context, id int64) (*domain.User, error)
+	saveFn             func(ctx context.Context, user *domain.User) error
+	beginTxFn          func(ctx context.Context) (repository.Tx, error)
+	findByNameWithTxFn func(ctx context.Context, tx repository.Tx, name string) (*domain.User, error)
+	saveWithTxFn       func(ctx context.Context, tx repository.Tx, user *domain.User) error
 }
 
 func (m *mockUserRepository) FindByName(ctx context.Context, name string) (*domain.User, error) {
@@ -41,14 +65,41 @@ func (m *mockUserRepository) Save(ctx context.Context, user *domain.User) error 
 	return nil
 }
 
+func (m *mockUserRepository) BeginTx(ctx context.Context) (repository.Tx, error) {
+	if m.beginTxFn != nil {
+		return m.beginTxFn(ctx)
+	}
+	return &mockTx{}, nil
+}
+
+func (m *mockUserRepository) FindByNameWithTx(ctx context.Context, tx repository.Tx, name string) (*domain.User, error) {
+	if m.findByNameWithTxFn != nil {
+		return m.findByNameWithTxFn(ctx, tx, name)
+	}
+	return nil, domain.ErrUserNotFound
+}
+
+func (m *mockUserRepository) SaveWithTx(ctx context.Context, tx repository.Tx, user *domain.User) error {
+	if m.saveWithTxFn != nil {
+		return m.saveWithTxFn(ctx, tx, user)
+	}
+	// Simulate ID assignment
+	if user.ID == 0 {
+		user.ID = 1
+	}
+	return nil
+}
+
 // Mock SessionRepository
 type mockSessionRepository struct {
-	saveFn               func(ctx context.Context, session *domain.Session) error
-	createFn             func(ctx context.Context, session *domain.Session) error
-	findByIDFn           func(ctx context.Context, id int64) (*domain.Session, error)
-	findActiveByUserIDFn func(ctx context.Context, userID int64) (*domain.Session, error)
-	updateFn             func(ctx context.Context, session *domain.Session) error
-	listByUserIDFn       func(ctx context.Context, userID int64, limit, offset int32) ([]*domain.Session, error)
+	saveFn                     func(ctx context.Context, session *domain.Session) error
+	createFn                   func(ctx context.Context, session *domain.Session) error
+	findByIDFn                 func(ctx context.Context, id int64) (*domain.Session, error)
+	findActiveByUserIDFn       func(ctx context.Context, userID int64) (*domain.Session, error)
+	updateFn                   func(ctx context.Context, session *domain.Session) error
+	listByUserIDFn             func(ctx context.Context, userID int64, limit, offset int32) ([]*domain.Session, error)
+	findActiveByUserIDWithTxFn func(ctx context.Context, tx repository.Tx, userID int64) (*domain.Session, error)
+	createWithTxFn             func(ctx context.Context, tx repository.Tx, session *domain.Session) error
 }
 
 func (m *mockSessionRepository) Save(ctx context.Context, session *domain.Session) error {
@@ -101,6 +152,24 @@ func (m *mockSessionRepository) ListByUserID(ctx context.Context, userID int64, 
 	return nil, nil
 }
 
+func (m *mockSessionRepository) FindActiveByUserIDWithTx(ctx context.Context, tx repository.Tx, userID int64) (*domain.Session, error) {
+	if m.findActiveByUserIDWithTxFn != nil {
+		return m.findActiveByUserIDWithTxFn(ctx, tx, userID)
+	}
+	return nil, domain.ErrSessionNotFound
+}
+
+func (m *mockSessionRepository) CreateWithTx(ctx context.Context, tx repository.Tx, session *domain.Session) error {
+	if m.createWithTxFn != nil {
+		return m.createWithTxFn(ctx, tx, session)
+	}
+	// Simulate ID assignment
+	if session.ID == 0 {
+		session.ID = 100
+	}
+	return nil
+}
+
 // Tests
 func TestJoinCommand_NewUser(t *testing.T) {
 	userRepo := &mockUserRepository{}
@@ -146,7 +215,7 @@ func TestJoinCommand_ExistingUser(t *testing.T) {
 	}
 
 	userRepo := &mockUserRepository{
-		findByNameFn: func(ctx context.Context, name string) (*domain.User, error) {
+		findByNameWithTxFn: func(ctx context.Context, tx repository.Tx, name string) (*domain.User, error) {
 			if name == "yamada" {
 				return existingUser, nil
 			}
@@ -197,16 +266,16 @@ func TestJoinCommand_AlreadyActiveSession(t *testing.T) {
 	}
 
 	userRepo := &mockUserRepository{
-		findByNameFn: func(ctx context.Context, name string) (*domain.User, error) {
+		findByNameWithTxFn: func(ctx context.Context, tx repository.Tx, name string) (*domain.User, error) {
 			return existingUser, nil
 		},
 	}
 	sessionRepo := &mockSessionRepository{
-		findActiveByUserIDFn: func(ctx context.Context, userID int64) (*domain.Session, error) {
+		findActiveByUserIDWithTxFn: func(ctx context.Context, tx repository.Tx, userID int64) (*domain.Session, error) {
 			if userID == 42 {
 				return activeSession, nil
 			}
-			return nil, errors.New("session not found")
+			return nil, domain.ErrSessionNotFound
 		},
 	}
 

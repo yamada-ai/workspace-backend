@@ -82,6 +82,27 @@ func (q *Queries) FindUserByName(ctx context.Context, name string) (User, error)
 	return i, err
 }
 
+const findUserByNameForUpdate = `-- name: FindUserByNameForUpdate :one
+SELECT id, name, tier, created_at, updated_at
+FROM users
+WHERE name = $1
+FOR UPDATE
+LIMIT 1
+`
+
+func (q *Queries) FindUserByNameForUpdate(ctx context.Context, name string) (User, error) {
+	row := q.db.QueryRow(ctx, findUserByNameForUpdate, name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Tier,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET tier = $2, updated_at = $3

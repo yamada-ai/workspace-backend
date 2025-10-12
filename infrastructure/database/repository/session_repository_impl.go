@@ -26,6 +26,58 @@ func NewSessionRepository(queries *sqlc.Queries) domainRepo.SessionRepository {
 	return &sessionRepositoryImpl{queries: queries}
 }
 
+func (r *sessionRepositoryImpl) FindActiveByUserIDWithTx(ctx context.Context, tx domainRepo.Tx, userID int64) (*domain.Session, error) {
+	wrapper, ok := tx.(*txWrapper)
+	if !ok {
+		return nil, errors.New("invalid transaction type")
+	}
+
+	queries := sqlc.New(wrapper.tx)
+	session, err := queries.FindActiveSessionByUserID(ctx, int32(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrSessionNotFound
+		}
+		return nil, err
+	}
+	return toDomainSession(session), nil
+}
+
+func (r *sessionRepositoryImpl) CreateWithTx(ctx context.Context, tx domainRepo.Tx, session *domain.Session) error {
+	wrapper, ok := tx.(*txWrapper)
+	if !ok {
+		return errors.New("invalid transaction type")
+	}
+
+	queries := sqlc.New(wrapper.tx)
+
+	var iconID pgtype.Int4
+	if session.IconID != nil {
+		iconID = pgtype.Int4{Int32: int32(*session.IconID), Valid: true}
+	}
+
+	var workName pgtype.Text
+	if session.WorkName != "" {
+		workName = pgtype.Text{String: session.WorkName, Valid: true}
+	}
+
+	created, err := queries.CreateSession(ctx, sqlc.CreateSessionParams{
+		UserID:     int32(session.UserID),
+		WorkName:   workName,
+		StartTime:  pgtype.Timestamp{Time: session.StartTime, Valid: true},
+		PlannedEnd: pgtype.Timestamp{Time: session.PlannedEnd, Valid: true},
+		IconID:     iconID,
+		CreatedAt:  pgtype.Timestamp{Time: session.CreatedAt, Valid: true},
+		UpdatedAt:  pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+
+	session.ID = int64(created.ID)
+	return nil
+}
+
 // Save creates or updates a session
 func (r *sessionRepositoryImpl) Save(ctx context.Context, session *domain.Session) error {
 	if session.ID == 0 {
