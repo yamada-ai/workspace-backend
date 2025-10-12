@@ -12,11 +12,10 @@ type Config struct {
 }
 
 // Load loads configuration from environment variables
-func Load() *Config {
+func Load() (*Config, error) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		// Default for local development
-		dbURL = "postgres://localhost:5432/workspace?sslmode=disable"
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 
 	port := os.Getenv("PORT")
@@ -27,5 +26,5 @@ func Load() *Config {
 	return &Config{
 		DatabaseURL: dbURL,
 		ServerPort:  fmt.Sprintf(":%s", port),
-	}
+	}, nil
 }

@@ -23,7 +23,10 @@ import (
 
 func main() {
 	// Load configuration
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 	log.Printf("Starting work-tracker server on %s", cfg.ServerPort)
 
 	// Create context with cancellation
@@ -49,7 +52,7 @@ func main() {
 	queries := sqlc.New(pool)
 
 	// 2. Create Repository implementations
-	userRepo := infraRepo.NewUserRepository(queries)
+	userRepo := infraRepo.NewUserRepositoryWithPool(pool)
 	sessionRepo := infraRepo.NewSessionRepository(queries)
 
 	// 3. Create Use Cases
