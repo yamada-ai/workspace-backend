@@ -60,8 +60,8 @@ func CleanupTables(t *testing.T, pool *pgxpool.Pool) {
 
 	ctx := context.Background()
 	queries := []string{
-		"TRUNCATE TABLE sessions CASCADE",
-		"TRUNCATE TABLE users CASCADE",
+		"TRUNCATE TABLE sessions RESTART IDENTITY CASCADE",
+		"TRUNCATE TABLE users RESTART IDENTITY CASCADE",
 	}
 
 	for _, query := range queries {
