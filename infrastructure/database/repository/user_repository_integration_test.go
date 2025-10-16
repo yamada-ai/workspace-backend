@@ -16,7 +16,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	testutil.CleanupTables(t, pool)
 
 	queries := sqlc.New(pool)
-	repo := repository.NewUserRepository(queries)
+	userRepository := repository.NewUserRepository(queries)
 	ctx := context.Background()
 
 	t.Run("Save and FindByName", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Save the user
-		if err := repo.Save(ctx, user); err != nil {
+		if err := userRepository.Save(ctx, user); err != nil {
 			t.Fatalf("Failed to save user: %v", err)
 		}
 
@@ -39,7 +39,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Find the user by name
-		found, err := repo.FindByName(ctx, "integration_test_user")
+		found, err := userRepository.FindByName(ctx, "integration_test_user")
 		if err != nil {
 			t.Fatalf("Failed to find user by name: %v", err)
 		}
@@ -61,12 +61,12 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Create and save a user
 		user, _ := domain.NewUser("findbyid_test", 1, time.Now)
-		if err := repo.Save(ctx, user); err != nil {
+		if err := userRepository.Save(ctx, user); err != nil {
 			t.Fatalf("Failed to save user: %v", err)
 		}
 
 		// Find by ID
-		found, err := repo.FindByID(ctx, user.ID)
+		found, err := userRepository.FindByID(ctx, user.ID)
 		if err != nil {
 			t.Fatalf("Failed to find user by ID: %v", err)
 		}
@@ -79,7 +79,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	t.Run("FindByName_NotFound", func(t *testing.T) {
 		testutil.CleanupTables(t, pool)
 
-		_, err := repo.FindByName(ctx, "nonexistent_user")
+		_, err := userRepository.FindByName(ctx, "nonexistent_user")
 		if err != domain.ErrUserNotFound {
 			t.Errorf("Expected ErrUserNotFound, got %v", err)
 		}
@@ -88,7 +88,7 @@ func TestUserRepository_Integration(t *testing.T) {
 	t.Run("FindByID_NotFound", func(t *testing.T) {
 		testutil.CleanupTables(t, pool)
 
-		_, err := repo.FindByID(ctx, 99999)
+		_, err := userRepository.FindByID(ctx, 99999)
 		if err != domain.ErrUserNotFound {
 			t.Errorf("Expected ErrUserNotFound, got %v", err)
 		}
@@ -99,13 +99,13 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Create and save first user
 		user1, _ := domain.NewUser("duplicate_test", 1, time.Now)
-		if err := repo.Save(ctx, user1); err != nil {
+		if err := userRepository.Save(ctx, user1); err != nil {
 			t.Fatalf("Failed to save first user: %v", err)
 		}
 
 		// Try to save second user with same name
 		user2, _ := domain.NewUser("duplicate_test", 2, time.Now)
-		err := repo.Save(ctx, user2)
+		err := userRepository.Save(ctx, user2)
 
 		// Should return an error (unique constraint violation)
 		if err == nil {
@@ -118,7 +118,7 @@ func TestUserRepository_Integration(t *testing.T) {
 
 		// Create and save a user
 		user, _ := domain.NewUser("update_test", 1, time.Now)
-		if err := repo.Save(ctx, user); err != nil {
+		if err := userRepository.Save(ctx, user); err != nil {
 			t.Fatalf("Failed to save user: %v", err)
 		}
 
@@ -128,7 +128,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		user.Tier = 3
 
 		// Save again (should update)
-		if err := repo.Save(ctx, user); err != nil {
+		if err := userRepository.Save(ctx, user); err != nil {
 			t.Fatalf("Failed to update user: %v", err)
 		}
 
@@ -138,7 +138,7 @@ func TestUserRepository_Integration(t *testing.T) {
 		}
 
 		// Verify the update
-		found, err := repo.FindByID(ctx, user.ID)
+		found, err := userRepository.FindByID(ctx, user.ID)
 		if err != nil {
 			t.Fatalf("Failed to find updated user: %v", err)
 		}

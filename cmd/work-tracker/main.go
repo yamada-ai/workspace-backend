@@ -52,14 +52,14 @@ func main() {
 	queries := sqlc.New(pool)
 
 	// 2. Create Repository implementations
-	userRepo := infraRepo.NewUserRepositoryWithPool(pool)
-	sessionRepo := infraRepo.NewSessionRepository(queries)
+	userRepository := infraRepo.NewUserRepositoryWithPool(pool)
+	sessionRepository := infraRepo.NewSessionRepository(queries)
 
 	// 3. Create Use Cases
-	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo)
+	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository)
 
 	// 4. Create HTTP Handlers
-	commandHandler := handler.NewCommandHandler(joinUseCase)
+	commandHandler := handler.NewCommandHandler(joinUsecase)
 
 	// 5. Setup Router
 	r := chi.NewRouter()

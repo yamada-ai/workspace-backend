@@ -172,10 +172,10 @@ func (m *mockSessionRepository) CreateWithTx(ctx context.Context, tx repository.
 
 // Tests
 func TestJoinCommand_NewUser(t *testing.T) {
-	userRepo := &mockUserRepository{}
-	sessionRepo := &mockSessionRepository{}
+	userRepository := &mockUserRepository{}
+	sessionRepository := &mockSessionRepository{}
 
-	uc := NewJoinCommandUseCase(userRepo, sessionRepo)
+	uc := NewJoinCommandUseCase(userRepository, sessionRepository)
 
 	input := JoinCommandInput{
 		UserName: "yamada",

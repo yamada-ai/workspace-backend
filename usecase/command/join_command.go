@@ -33,27 +33,27 @@ type JoinCommandOutput struct {
 
 // JoinCommandUseCase handles the /in command logic
 type JoinCommandUseCase struct {
-	userRepo    repository.UserRepository
-	sessionRepo repository.SessionRepository
-	now         func() time.Time
+	userRepository    repository.UserRepository
+	sessionRepository repository.SessionRepository
+	now               func() time.Time
 }
 
 // NewJoinCommandUseCase creates a new join command use case
 func NewJoinCommandUseCase(
-	userRepo repository.UserRepository,
-	sessionRepo repository.SessionRepository,
+	userRepository repository.UserRepository,
+	sessionRepository repository.SessionRepository,
 ) *JoinCommandUseCase {
 	return &JoinCommandUseCase{
-		userRepo:    userRepo,
-		sessionRepo: sessionRepo,
-		now:         time.Now,
+		userRepository:    userRepository,
+		sessionRepository: sessionRepository,
+		now:               time.Now,
 	}
 }
 
 // Execute executes the join command
 func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInput) (*JoinCommandOutput, error) {
 	// Start transaction
-	tx, err := uc.userRepo.BeginTx(ctx)
+	tx, err := uc.userRepository.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 	}()
 
 	// 1. Find or create user within transaction
-	user, err := uc.userRepo.FindByNameWithTx(ctx, tx, input.UserName)
+	user, err := uc.userRepository.FindByNameWithTx(ctx, tx, input.UserName)
 	isNewUser := false
 	if err == domain.ErrUserNotFound {
 		// Create new user
@@ -72,10 +72,10 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 		if err != nil {
 			return nil, err
 		}
-		if err := uc.userRepo.SaveWithTx(ctx, tx, user); err != nil {
+		if err := uc.userRepository.SaveWithTx(ctx, tx, user); err != nil {
 			if err == domain.ErrUserAlreadyExists {
 				// Another goroutine created the user, retry find
-				user, err = uc.userRepo.FindByNameWithTx(ctx, tx, input.UserName)
+				user, err = uc.userRepository.FindByNameWithTx(ctx, tx, input.UserName)
 				if err != nil {
 					return nil, err
 				}
@@ -90,7 +90,7 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 	}
 
 	// 2. Check if user already has an active session
-	activeSession, err := uc.sessionRepo.FindActiveByUserIDWithTx(ctx, tx, user.ID)
+	activeSession, err := uc.sessionRepository.FindActiveByUserIDWithTx(ctx, tx, user.ID)
 	if err == nil {
 		// User already has an active session, commit and return
 		if err := tx.Commit(ctx); err != nil {
@@ -115,7 +115,7 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 		return nil, err
 	}
 
-	if err := uc.sessionRepo.CreateWithTx(ctx, tx, session); err != nil {
+	if err := uc.sessionRepository.CreateWithTx(ctx, tx, session); err != nil {
 		return nil, err
 	}
 

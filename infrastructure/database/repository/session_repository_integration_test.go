@@ -16,7 +16,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 	testutil.CleanupTables(t, pool)
 
 	queries := sqlc.New(pool)
-	repo := repository.NewSessionRepository(queries)
+	sessionRepository := repository.NewSessionRepository(queries)
 	ctx := context.Background()
 
 	// Helper to create a test user
@@ -37,7 +37,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 		}
 
 		// Save the session
-		if err := repo.Save(ctx, session); err != nil {
+		if err := sessionRepository.Save(ctx, session); err != nil {
 			t.Fatalf("Failed to save session: %v", err)
 		}
 
@@ -47,7 +47,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 		}
 
 		// Find the session by ID
-		found, err := repo.FindByID(ctx, session.ID)
+		found, err := sessionRepository.FindByID(ctx, session.ID)
 		if err != nil {
 			t.Fatalf("Failed to find session by ID: %v", err)
 		}
@@ -71,12 +71,12 @@ func TestSessionRepository_Integration(t *testing.T) {
 
 		// Create an active session
 		session, _ := domain.NewSession(userID, "アクティブセッション", 1*time.Hour, time.Now)
-		if err := repo.Save(ctx, session); err != nil {
+		if err := sessionRepository.Save(ctx, session); err != nil {
 			t.Fatalf("Failed to save session: %v", err)
 		}
 
 		// Find active session
-		active, err := repo.FindActiveByUserID(ctx, userID)
+		active, err := sessionRepository.FindActiveByUserID(ctx, userID)
 		if err != nil {
 			t.Fatalf("Failed to find active session: %v", err)
 		}
@@ -95,7 +95,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 		userID := createTestUser(t, "no_active_session_user", 1)
 
 		// Try to find active session (should not exist)
-		_, err := repo.FindActiveByUserID(ctx, userID)
+		_, err := sessionRepository.FindActiveByUserID(ctx, userID)
 		if err != domain.ErrSessionNotFound {
 			t.Errorf("Expected ErrSessionNotFound, got %v", err)
 		}
@@ -108,19 +108,19 @@ func TestSessionRepository_Integration(t *testing.T) {
 
 		// Create an active session first
 		session, _ := domain.NewSession(userID, "完了済み", 1*time.Hour, time.Now)
-		if err := repo.Save(ctx, session); err != nil {
+		if err := sessionRepository.Save(ctx, session); err != nil {
 			t.Fatalf("Failed to save session: %v", err)
 		}
 
 		// Then complete it
 		actualEnd := time.Now()
 		session.ActualEnd = &actualEnd
-		if err := repo.Save(ctx, session); err != nil {
+		if err := sessionRepository.Save(ctx, session); err != nil {
 			t.Fatalf("Failed to complete session: %v", err)
 		}
 
 		// Try to find active session (should not exist)
-		_, err := repo.FindActiveByUserID(ctx, userID)
+		_, err := sessionRepository.FindActiveByUserID(ctx, userID)
 		if err != domain.ErrSessionNotFound {
 			t.Errorf("Expected ErrSessionNotFound, got %v", err)
 		}
@@ -133,7 +133,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 
 		// Create and save a session
 		session, _ := domain.NewSession(userID, "元の作業", 1*time.Hour, time.Now)
-		if err := repo.Save(ctx, session); err != nil {
+		if err := sessionRepository.Save(ctx, session); err != nil {
 			t.Fatalf("Failed to save session: %v", err)
 		}
 
@@ -144,7 +144,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 		session.ActualEnd = &completedTime
 
 		// Save again (should update)
-		if err := repo.Save(ctx, session); err != nil {
+		if err := sessionRepository.Save(ctx, session); err != nil {
 			t.Fatalf("Failed to update session: %v", err)
 		}
 
@@ -154,7 +154,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 		}
 
 		// Verify the update
-		found, err := repo.FindByID(ctx, session.ID)
+		found, err := sessionRepository.FindByID(ctx, session.ID)
 		if err != nil {
 			t.Fatalf("Failed to find updated session: %v", err)
 		}
@@ -171,12 +171,12 @@ func TestSessionRepository_Integration(t *testing.T) {
 
 		// Create first active session
 		session1, _ := domain.NewSession(userID, "セッション1", 1*time.Hour, time.Now)
-		if err := repo.Save(ctx, session1); err != nil {
+		if err := sessionRepository.Save(ctx, session1); err != nil {
 			t.Fatalf("Failed to save first session: %v", err)
 		}
 
 		// Find active session (should be session1)
-		active, err := repo.FindActiveByUserID(ctx, userID)
+		active, err := sessionRepository.FindActiveByUserID(ctx, userID)
 		if err != nil {
 			t.Fatalf("Failed to find active session: %v", err)
 		}
@@ -188,18 +188,18 @@ func TestSessionRepository_Integration(t *testing.T) {
 		// Complete the first session
 		completedTime := time.Now()
 		session1.ActualEnd = &completedTime
-		if err := repo.Save(ctx, session1); err != nil {
+		if err := sessionRepository.Save(ctx, session1); err != nil {
 			t.Fatalf("Failed to update first session: %v", err)
 		}
 
 		// Create second active session
 		session2, _ := domain.NewSession(userID, "セッション2", 1*time.Hour, time.Now)
-		if err := repo.Save(ctx, session2); err != nil {
+		if err := sessionRepository.Save(ctx, session2); err != nil {
 			t.Fatalf("Failed to save second session: %v", err)
 		}
 
 		// Find active session (should now be session2)
-		active, err = repo.FindActiveByUserID(ctx, userID)
+		active, err = sessionRepository.FindActiveByUserID(ctx, userID)
 		if err != nil {
 			t.Fatalf("Failed to find active session: %v", err)
 		}
@@ -215,7 +215,7 @@ func TestSessionRepository_Integration(t *testing.T) {
 	t.Run("FindByID_NotFound", func(t *testing.T) {
 		testutil.CleanupTables(t, pool)
 
-		_, err := repo.FindByID(ctx, 99999)
+		_, err := sessionRepository.FindByID(ctx, 99999)
 		if err != domain.ErrSessionNotFound {
 			t.Errorf("Expected ErrSessionNotFound, got %v", err)
 		}
