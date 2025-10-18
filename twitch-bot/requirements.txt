@@ -1,0 +1,8 @@
+twitchio>=3.0.0b4,<4.0.0
+python-dotenv>=1.1.0,<2.0.0
+httpx>=0.28.0,<0.29.0
+uvicorn>=0.18.0
+twitchAPI>=4.5.0,<5.0.0
+websockets>=12.0,<13.0
+attrs>=22.2.0
+python-dateutil>=2.8.0  

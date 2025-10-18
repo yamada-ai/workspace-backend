@@ -1,15 +1,18 @@
-.PHONY: help gen gen-sqlc gen-openapi test lint run migrate-up migrate-down migrate-create docker-up docker-down docker-logs dev-up build
+.PHONY: help gen gen-sqlc gen-openapi gen-client-python test lint run migrate-up migrate-down migrate-create docker-up docker-down docker-logs dev-up build
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-gen: gen-sqlc gen-openapi ## Generate all code (sqlc + OpenAPI)
+gen: gen-sqlc gen-openapi gen-client-python ## Generate all code (sqlc + OpenAPI + clients)
 
 gen-sqlc: ## Generate sqlc code
 	@bash scripts/gen_sqlc.sh
 
-gen-openapi: ## Generate OpenAPI code
+gen-openapi: ## Generate OpenAPI server code
 	@bash scripts/gen_openapi.sh
+
+gen-client-python: ## Generate Python OpenAPI client
+	@bash scripts/gen_openapi_client_python.sh
 
 test: ## Run all tests (unit + integration)
 	DATABASE_URL='postgres://postgres:postgres@localhost:5432/workspace_test?sslmode=disable' \
