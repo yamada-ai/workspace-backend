@@ -17,7 +17,6 @@ const (
 type JoinCommandInput struct {
 	UserName string
 	WorkName string
-	Tier     domain.Tier
 }
 
 // JoinCommandOutput represents the output of join command
@@ -67,8 +66,8 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 	user, err := uc.userRepository.FindByNameWithTx(ctx, tx, input.UserName)
 	isNewUser := false
 	if err == domain.ErrUserNotFound {
-		// Create new user
-		user, err = domain.NewUser(input.UserName, input.Tier, uc.now)
+		// Create new user with default Tier1
+		user, err = domain.NewUser(input.UserName, domain.Tier1, uc.now)
 		if err != nil {
 			return nil, err
 		}

@@ -180,7 +180,6 @@ func TestJoinCommand_NewUser(t *testing.T) {
 	input := JoinCommandInput{
 		UserName: "yamada",
 		WorkName: "論文執筆",
-		Tier:     domain.Tier1,
 	}
 
 	output, err := uc.Execute(context.Background(), input)
@@ -229,7 +228,6 @@ func TestJoinCommand_ExistingUser(t *testing.T) {
 	input := JoinCommandInput{
 		UserName: "yamada",
 		WorkName: "コーディング",
-		Tier:     domain.Tier1, // This should be ignored since user exists
 	}
 
 	output, err := uc.Execute(context.Background(), input)
@@ -284,7 +282,6 @@ func TestJoinCommand_AlreadyActiveSession(t *testing.T) {
 	input := JoinCommandInput{
 		UserName: "yamada",
 		WorkName: "新しい作業",
-		Tier:     domain.Tier1,
 	}
 
 	output, err := uc.Execute(context.Background(), input)

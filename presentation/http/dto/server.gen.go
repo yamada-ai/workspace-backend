@@ -19,9 +19,6 @@ type ErrorResponse struct {
 
 // JoinCommandRequest defines model for JoinCommandRequest.
 type JoinCommandRequest struct {
-	// Tier User tier (1-3)
-	Tier int `json:"tier"`
-
 	// UserName User name from Twitch/YouTube
 	UserName string `json:"user_name"`
 

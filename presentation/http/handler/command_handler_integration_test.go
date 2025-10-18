@@ -50,7 +50,6 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		// Prepare request
 		reqBody := dto.JoinCommandRequest{
 			UserName: "e2e_test_user",
-			Tier:     1,
 			WorkName: stringPtr("E2Eテスト作業"),
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
@@ -109,7 +108,6 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		// Send join request
 		reqBody := dto.JoinCommandRequest{
 			UserName: "existing_user",
-			Tier:     2,
 			WorkName: stringPtr("新しい作業"),
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
@@ -153,7 +151,6 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		// First request: create user and session
 		reqBody1 := dto.JoinCommandRequest{
 			UserName: "duplicate_join_user",
-			Tier:     1,
 			WorkName: stringPtr("最初の作業"),
 		}
 		bodyBytes1, _ := json.Marshal(reqBody1)
@@ -176,7 +173,6 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		// Second request: same user tries to join again
 		reqBody2 := dto.JoinCommandRequest{
 			UserName: "duplicate_join_user",
-			Tier:     1,
 			WorkName: stringPtr("二回目の作業"),
 		}
 		bodyBytes2, _ := json.Marshal(reqBody2)
@@ -221,34 +217,6 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 
 		// Send request with missing user_name
 		reqBody := dto.JoinCommandRequest{
-			Tier:     1,
-			WorkName: stringPtr("作業"),
-		}
-		bodyBytes, _ := json.Marshal(reqBody)
-
-		resp, err := http.Post(
-			server.URL+"/api/commands/join",
-			"application/json",
-			bytes.NewReader(bodyBytes),
-		)
-		if err != nil {
-			t.Fatalf("Failed to send request: %v", err)
-		}
-		defer func() { _ = resp.Body.Close() }()
-
-		// Should return 400 Bad Request
-		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("Expected status 400, got %d", resp.StatusCode)
-		}
-	})
-
-	t.Run("InvalidRequest_InvalidTier", func(t *testing.T) {
-		testutil.CleanupTables(t, pool)
-
-		// Send request with invalid tier
-		reqBody := dto.JoinCommandRequest{
-			UserName: "invalid_tier_user",
-			Tier:     99, // Invalid tier
 			WorkName: stringPtr("作業"),
 		}
 		bodyBytes, _ := json.Marshal(reqBody)
@@ -292,7 +260,6 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 
 				reqBody := dto.JoinCommandRequest{
 					UserName: "concurrent_user",
-					Tier:     1,
 					WorkName: stringPtr("並行作業"),
 				}
 				bodyBytes, _ := json.Marshal(reqBody)
@@ -389,7 +356,6 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 		// Step 1: User joins for the first time
 		reqBody1 := dto.JoinCommandRequest{
 			UserName: "workflow_user",
-			Tier:     2,
 			WorkName: stringPtr("プロジェクトA"),
 		}
 		bodyBytes1, _ := json.Marshal(reqBody1)
@@ -416,7 +382,6 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 		// Step 3: User joins again with a different task
 		reqBody2 := dto.JoinCommandRequest{
 			UserName: "workflow_user",
-			Tier:     2,
 			WorkName: stringPtr("プロジェクトB"),
 		}
 		bodyBytes2, _ := json.Marshal(reqBody2)

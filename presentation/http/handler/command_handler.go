@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/yamada-ai/workspace-backend/domain"
 	"github.com/yamada-ai/workspace-backend/presentation/http/dto"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
 )
@@ -36,13 +35,6 @@ func (h *CommandHandler) JoinCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate tier
-	tier, err := domain.ParseTier(string(rune(req.Tier + '0'))) // Convert int to "1", "2", "3"
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid tier value")
-		return
-	}
-
 	// Prepare usecase input
 	workName := ""
 	if req.WorkName != nil {
@@ -52,7 +44,6 @@ func (h *CommandHandler) JoinCommand(w http.ResponseWriter, r *http.Request) {
 	input := command.JoinCommandInput{
 		UserName: req.UserName,
 		WorkName: workName,
-		Tier:     tier,
 	}
 
 	// Execute usecase
