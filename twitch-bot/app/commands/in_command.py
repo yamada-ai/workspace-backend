@@ -15,11 +15,13 @@ async def handle_in_command(user_name: str, content: str):
 
     Returns:
         JoinCommandResponse
+
+    Raises:
+        AlreadyInSessionError: ユーザーが既にアクティブなセッションを持っている場合
+        RuntimeError: その他のエラーが発生した場合
     """
     parts = content.strip().split(maxsplit=1)
-    work_name = None
+    work_name = parts[1] if len(parts) >= 2 else None
 
-    if len(parts) >= 2:
-        work_name = parts[1]
-
+    # エラーは上位に伝播させる
     return await send_in_command(user_name, work_name)

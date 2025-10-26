@@ -27,7 +27,6 @@ type JoinCommandOutput struct {
 	StartTime  time.Time
 	PlannedEnd time.Time
 	IsNewUser  bool
-	AlreadyIn  bool // true if user already has an active session
 }
 
 // JoinCommandUseCase handles the /in command logic
@@ -89,21 +88,11 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 	}
 
 	// 2. Check if user already has an active session
-	activeSession, err := uc.sessionRepository.FindActiveByUserIDWithTx(ctx, tx, user.ID)
+	_, err = uc.sessionRepository.FindActiveByUserIDWithTx(ctx, tx, user.ID)
 	if err == nil {
-		// User already has an active session, commit and return
-		if err := tx.Commit(ctx); err != nil {
-			return nil, err
-		}
-		return &JoinCommandOutput{
-			SessionID:  activeSession.ID,
-			UserID:     user.ID,
-			WorkName:   activeSession.WorkName,
-			StartTime:  activeSession.StartTime,
-			PlannedEnd: activeSession.PlannedEnd,
-			IsNewUser:  isNewUser,
-			AlreadyIn:  true,
-		}, nil
+		// User already has an active session, return error
+		_ = tx.Rollback(ctx)
+		return nil, domain.ErrUserAlreadyInSession
 	} else if err != domain.ErrSessionNotFound {
 		return nil, err
 	}
@@ -130,6 +119,5 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 		StartTime:  session.StartTime,
 		PlannedEnd: session.PlannedEnd,
 		IsNewUser:  isNewUser,
-		AlreadyIn:  false,
 	}, nil
 }

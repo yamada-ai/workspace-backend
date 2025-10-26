@@ -187,25 +187,20 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 		}
 		defer func() { _ = resp2.Body.Close() }()
 
-		// Check status code
-		if resp2.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", resp2.StatusCode)
+		// Check status code - should now return 409 Conflict
+		if resp2.StatusCode != http.StatusConflict {
+			t.Errorf("Expected status 409, got %d", resp2.StatusCode)
 		}
 
-		// Parse response
-		var response2 dto.JoinCommandResponse
-		if err := json.NewDecoder(resp2.Body).Decode(&response2); err != nil {
-			t.Fatalf("Failed to decode response: %v", err)
+		// Parse error response
+		var errorResp dto.ErrorResponse
+		if err := json.NewDecoder(resp2.Body).Decode(&errorResp); err != nil {
+			t.Fatalf("Failed to decode error response: %v", err)
 		}
 
-		// Verify that the same session is returned
-		if response2.SessionId != response1.SessionId {
-			t.Errorf("Expected same session_id %d, got %d", response1.SessionId, response2.SessionId)
-		}
-
-		// Work name should be from the first session, not the second
-		if response2.WorkName == nil || *response2.WorkName != "最初の作業" {
-			t.Errorf("Expected work_name '最初の作業', got %v", response2.WorkName)
+		// Verify error message
+		if errorResp.Error == "" {
+			t.Error("Expected error message to be set")
 		}
 
 		// Verify database state: should still have only 1 active session
@@ -242,7 +237,8 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 
 		// Simulate concurrent requests from the same user with start barrier
 		const numRequests = 5
-		results := make(chan dto.JoinCommandResponse, numRequests)
+		successResults := make(chan dto.JoinCommandResponse, numRequests)
+		conflictResults := make(chan struct{}, numRequests)
 		errors := make(chan error, numRequests)
 
 		// Create HTTP client with timeout
@@ -275,18 +271,24 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 				}
 				defer func() { _ = resp.Body.Close() }()
 
-				if resp.StatusCode != http.StatusOK {
+				// Accept both 200 OK (first request) and 409 Conflict (subsequent requests)
+				if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusConflict {
 					errors <- fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 					return
 				}
 
-				var response dto.JoinCommandResponse
-				if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-					errors <- err
-					return
+				// Collect successful responses (200 OK)
+				if resp.StatusCode == http.StatusOK {
+					var response dto.JoinCommandResponse
+					if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+						errors <- err
+						return
+					}
+					successResults <- response
+				} else {
+					// 409 Conflict
+					conflictResults <- struct{}{}
 				}
-
-				results <- response
 			}(i)
 		}
 
@@ -295,27 +297,42 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 
 		// Collect results
 		responses := make([]dto.JoinCommandResponse, 0, numRequests)
+		conflictCount := 0
+		errorCount := 0
 		for i := 0; i < numRequests; i++ {
 			select {
-			case resp := <-results:
+			case resp := <-successResults:
 				responses = append(responses, resp)
+			case <-conflictResults:
+				conflictCount++
 			case err := <-errors:
-				t.Errorf("Request failed: %v", err)
+				errorCount++
+				t.Errorf("Unexpected error: %v", err)
 			case <-time.After(10 * time.Second):
 				t.Fatal("Timeout waiting for concurrent requests")
 			}
 		}
 
-		// Verify we got all responses
-		if len(responses) == 0 {
-			t.Fatal("No successful responses received")
+		// Verify we got exactly 1 successful response (first request wins)
+		if len(responses) != 1 {
+			t.Errorf("Expected exactly 1 successful response, got %d", len(responses))
 		}
 
-		// All responses should have the same session_id
-		firstSessionID := responses[0].SessionId
-		for i, resp := range responses {
-			if resp.SessionId != firstSessionID {
-				t.Errorf("Request %d: Expected session_id %d, got %d", i, firstSessionID, resp.SessionId)
+		// Verify remaining requests got 409 Conflict
+		if conflictCount != numRequests-1 {
+			t.Errorf("Expected %d conflict responses, got %d", numRequests-1, conflictCount)
+		}
+
+		// Verify no unexpected errors
+		if errorCount > 0 {
+			t.Errorf("Got %d unexpected errors", errorCount)
+		}
+
+		// Verify session_id from successful response
+		if len(responses) > 0 {
+			sessionID := responses[0].SessionId
+			if sessionID == 0 {
+				t.Error("Expected session_id to be set")
 			}
 		}
 

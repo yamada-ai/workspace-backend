@@ -11,6 +11,7 @@ from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.type import AuthScope
 
 from app.commands.in_command import handle_in_command
+from app.api.work_tracker_client import AlreadyInSessionError
 
 load_dotenv()
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -173,7 +174,24 @@ async def main():
                 log.exception("send_chat failed: %s", e.response.text)
 
         if msg.startswith("!in"):
-            await handle_in_command(user_name, msg)
+            try:
+                result = await handle_in_command(user_name, msg)
+                # 成功時のメッセージ
+                work_display = result.work_name if result.work_name else "作業"
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} {work_display}を開始しました！",
+                              reply_to=message_id)
+            except AlreadyInSessionError as e:
+                # 409 Conflict: 既にセッション中
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} 既に作業セッション中です。先に !out で終了してください。",
+                              reply_to=message_id)
+            except Exception as e:
+                # その他のエラー
+                log.exception("!in command failed")
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} コマンドの処理に失敗しました。",
+                              reply_to=message_id)
 
     await es.listen_channel_chat_message(
         broadcaster_user_id=broadcaster_id,

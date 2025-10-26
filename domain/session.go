@@ -10,6 +10,7 @@ var (
 	ErrSessionAlreadyCompleted = errors.New("session already completed")
 	ErrInvalidDuration         = errors.New("invalid duration: must be positive")
 	ErrInvalidExtension        = errors.New("invalid extension: must be positive")
+	ErrUserAlreadyInSession    = errors.New("user already has an active session")
 )
 
 // Session 作業セッションを表す

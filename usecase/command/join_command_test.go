@@ -190,9 +190,6 @@ func TestJoinCommand_NewUser(t *testing.T) {
 	if !output.IsNewUser {
 		t.Error("expected IsNewUser to be true")
 	}
-	if output.AlreadyIn {
-		t.Error("expected AlreadyIn to be false")
-	}
 	if output.UserID == 0 {
 		t.Error("expected UserID to be set")
 	}
@@ -285,17 +282,15 @@ func TestJoinCommand_AlreadyActiveSession(t *testing.T) {
 	}
 
 	output, err := uc.Execute(context.Background(), input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if err == nil {
+		t.Fatal("expected error but got nil")
 	}
 
-	if !output.AlreadyIn {
-		t.Error("expected AlreadyIn to be true")
+	if !errors.Is(err, domain.ErrUserAlreadyInSession) {
+		t.Errorf("expected ErrUserAlreadyInSession, got %v", err)
 	}
-	if output.SessionID != 99 {
-		t.Errorf("expected SessionID to be 99, got %d", output.SessionID)
-	}
-	if output.WorkName != "既存の作業" {
-		t.Errorf("expected WorkName to be '既存の作業', got %s", output.WorkName)
+
+	if output != nil {
+		t.Errorf("expected output to be nil when error occurs, got %+v", output)
 	}
 }

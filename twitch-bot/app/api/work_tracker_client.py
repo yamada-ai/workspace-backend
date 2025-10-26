@@ -4,11 +4,16 @@ from typing import Optional
 
 from .generated.workspace_backend_api_client import Client
 from .generated.workspace_backend_api_client.api.default import join_command
-from .generated.workspace_backend_api_client.models import JoinCommandRequest
+from .generated.workspace_backend_api_client.models import JoinCommandRequest, JoinCommandResponse, ErrorResponse
 
 logger = logging.getLogger(__name__)
 
 WORK_TRACKER_URL = os.getenv("WORK_TRACKER_URL", "http://localhost:8000")
+
+
+class AlreadyInSessionError(Exception):
+    """User already has an active session"""
+    pass
 
 
 async def send_in_command(user_name: str, work_name: Optional[str] = None):
@@ -21,6 +26,10 @@ async def send_in_command(user_name: str, work_name: Optional[str] = None):
 
     Returns:
         JoinCommandResponse オブジェクト
+
+    Raises:
+        AlreadyInSessionError: ユーザーが既にアクティブなセッションを持っている場合
+        RuntimeError: その他のエラー
     """
     client = Client(base_url=WORK_TRACKER_URL)
 
@@ -32,15 +41,36 @@ async def send_in_command(user_name: str, work_name: Optional[str] = None):
     logger.info(f"POST {WORK_TRACKER_URL}/api/commands/join request={request}")
 
     try:
-        response = await join_command.asyncio(client=client, body=request)
+        # asyncio_detailed を使ってステータスコードを確認
+        detailed_response = await join_command.asyncio_detailed(client=client, body=request)
 
-        if response is None:
-            logger.error("[IN失敗] No response received")
-            raise RuntimeError("No response from server")
-        print(response)
-        logger.info(f"Session created: session_id={response.session_id}, user_id={response.user_id}")
-        return response
+        if detailed_response.status_code == 200:
+            response = detailed_response.parsed
+            if isinstance(response, JoinCommandResponse):
+                logger.info(f"Session created: session_id={response.session_id}, user_id={response.user_id}")
+                return response
+            else:
+                logger.error("[IN失敗] Unexpected response type for 200 OK")
+                raise RuntimeError("Unexpected response type for 200 OK")
 
+        elif detailed_response.status_code == 409:
+            error_response = detailed_response.parsed
+            if isinstance(error_response, ErrorResponse):
+                logger.warning(f"[IN失敗] Already in session: {error_response.error}")
+                raise AlreadyInSessionError(error_response.error)
+            else:
+                logger.error("[IN失敗] Unexpected response type for 409 Conflict")
+                raise RuntimeError("Unexpected response type for 409 Conflict")
+
+        else:
+            error_response = detailed_response.parsed
+            error_msg = error_response.error if isinstance(error_response, ErrorResponse) else "Unknown error"
+            logger.error(f"[IN失敗] Status {detailed_response.status_code}: {error_msg}")
+            raise RuntimeError(f"Server returned {detailed_response.status_code}: {error_msg}")
+
+    except AlreadyInSessionError:
+        # 既知のエラーはそのまま再送出
+        raise
     except Exception as e:
         logger.error(f"[IN失敗] {e}")
         raise

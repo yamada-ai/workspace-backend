@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/yamada-ai/workspace-backend/domain"
 	"github.com/yamada-ai/workspace-backend/presentation/http/dto"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
 )
@@ -49,6 +50,11 @@ func (h *CommandHandler) JoinCommand(w http.ResponseWriter, r *http.Request) {
 	// Execute usecase
 	output, err := h.joinUseCase.Execute(r.Context(), input)
 	if err != nil {
+		// Handle already in session error
+		if err == domain.ErrUserAlreadyInSession {
+			writeError(w, http.StatusConflict, "既に作業セッション中です。先に /out で終了してください。")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "Failed to join: "+err.Error())
 		return
 	}
