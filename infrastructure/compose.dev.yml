@@ -45,5 +45,16 @@ services:
       - work-tracker
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ../../workspace-frontend
+      dockerfile: Dockerfile
+    container_name: workspace-dev-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - work-tracker
+    restart: unless-stopped
+
 volumes:
   db-data:

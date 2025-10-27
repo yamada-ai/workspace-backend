@@ -18,6 +18,7 @@ import (
 	"github.com/yamada-ai/workspace-backend/infrastructure/database/sqlc"
 	"github.com/yamada-ai/workspace-backend/presentation/http/dto"
 	"github.com/yamada-ai/workspace-backend/presentation/http/handler"
+	"github.com/yamada-ai/workspace-backend/presentation/ws"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
 )
 
@@ -55,13 +56,18 @@ func main() {
 	userRepository := infraRepo.NewUserRepositoryWithPool(pool)
 	sessionRepository := infraRepo.NewSessionRepository(queries)
 
-	// 3. Create Use Cases
-	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository)
+	// 3. Create WebSocket Hub
+	wsHub := ws.NewHub()
+	go wsHub.Run() // Start hub in background goroutine
 
-	// 4. Create HTTP Handlers
+	// 4. Create Use Cases (inject WebSocket hub as broadcaster)
+	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub)
+
+	// 5. Create HTTP Handlers
 	commandHandler := handler.NewCommandHandler(joinUsecase)
+	wsHandler := ws.NewHandler(wsHub)
 
-	// 5. Setup Router
+	// 6. Setup Router
 	r := chi.NewRouter()
 
 	// Middleware
@@ -69,6 +75,9 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
+
+	// Register WebSocket endpoint
+	r.Get("/ws", wsHandler.ServeWS)
 
 	// Register OpenAPI-generated routes
 	handlerFunc := dto.HandlerFromMux(commandHandler, r)

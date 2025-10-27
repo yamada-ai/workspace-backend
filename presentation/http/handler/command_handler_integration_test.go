@@ -33,7 +33,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	// Create dependencies
 	userRepo := repository.NewUserRepositoryWithPool(pool)
 	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
-	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo)
+	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
 	commandHandler := handler.NewCommandHandler(joinUseCase)
 
 	// Setup router
@@ -355,7 +355,7 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	// Create dependencies
 	userRepo := repository.NewUserRepositoryWithPool(pool)
 	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
-	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo)
+	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
 	commandHandler := handler.NewCommandHandler(joinUseCase)
 
 	// Setup router

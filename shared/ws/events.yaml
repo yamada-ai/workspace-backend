@@ -1,0 +1,65 @@
+# WebSocket Event Schema
+# フロントエンド (TypeScript) とバックエンド (Go) で共有するイベント定義
+
+events:
+  session_start:
+    description: ユーザーが作業セッションを開始したときに送信される
+    type: session_start
+    fields:
+      id:
+        type: integer
+        description: セッションID
+      user_id:
+        type: integer
+        description: ユーザーID
+      user_name:
+        type: string
+        description: ユーザー名
+      work_name:
+        type: string
+        description: 作業名
+      tier:
+        type: integer
+        description: ユーザーのTier (1, 2, 3)
+      icon:
+        type: string
+        description: アイコンファイル名
+        optional: true
+      start_time:
+        type: string
+        format: ISO8601
+        description: セッション開始時刻
+      planned_end:
+        type: string
+        format: ISO8601
+        description: 予定終了時刻
+
+  session_end:
+    description: ユーザーが作業セッションを終了したときに送信される
+    type: session_end
+    fields:
+      id:
+        type: integer
+        description: セッションID
+      user_id:
+        type: integer
+        description: ユーザーID
+      actual_end:
+        type: string
+        format: ISO8601
+        description: 実際の終了時刻
+
+  session_extend:
+    description: ユーザーがセッションを延長したときに送信される
+    type: session_extend
+    fields:
+      id:
+        type: integer
+        description: セッションID
+      user_id:
+        type: integer
+        description: ユーザーID
+      new_planned_end:
+        type: string
+        format: ISO8601
+        description: 新しい予定終了時刻

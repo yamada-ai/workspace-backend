@@ -33,6 +33,7 @@ type JoinCommandOutput struct {
 type JoinCommandUseCase struct {
 	userRepository    repository.UserRepository
 	sessionRepository repository.SessionRepository
+	broadcaster       EventBroadcaster
 	now               func() time.Time
 }
 
@@ -40,10 +41,12 @@ type JoinCommandUseCase struct {
 func NewJoinCommandUseCase(
 	userRepository repository.UserRepository,
 	sessionRepository repository.SessionRepository,
+	broadcaster EventBroadcaster,
 ) *JoinCommandUseCase {
 	return &JoinCommandUseCase{
 		userRepository:    userRepository,
 		sessionRepository: sessionRepository,
+		broadcaster:       broadcaster,
 		now:               time.Now,
 	}
 }
@@ -111,6 +114,17 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+
+	// Broadcast session start event to all connected WebSocket clients
+	uc.broadcaster.BroadcastSessionStart(SessionStartBroadcast{
+		SessionID:  session.ID,
+		UserID:     user.ID,
+		UserName:   user.Name,
+		WorkName:   session.WorkName,
+		Tier:       int(user.Tier),
+		StartTime:  session.StartTime,
+		PlannedEnd: session.PlannedEnd,
+	})
 
 	return &JoinCommandOutput{
 		SessionID:  session.ID,

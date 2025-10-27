@@ -175,7 +175,7 @@ func TestJoinCommand_NewUser(t *testing.T) {
 	userRepository := &mockUserRepository{}
 	sessionRepository := &mockSessionRepository{}
 
-	uc := NewJoinCommandUseCase(userRepository, sessionRepository)
+	uc := NewJoinCommandUseCase(userRepository, sessionRepository, NoOpBroadcaster{})
 
 	input := JoinCommandInput{
 		UserName: "yamada",
@@ -220,7 +220,7 @@ func TestJoinCommand_ExistingUser(t *testing.T) {
 	}
 	sessionRepo := &mockSessionRepository{}
 
-	uc := NewJoinCommandUseCase(userRepo, sessionRepo)
+	uc := NewJoinCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{})
 
 	input := JoinCommandInput{
 		UserName: "yamada",
@@ -274,7 +274,7 @@ func TestJoinCommand_AlreadyActiveSession(t *testing.T) {
 		},
 	}
 
-	uc := NewJoinCommandUseCase(userRepo, sessionRepo)
+	uc := NewJoinCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{})
 
 	input := JoinCommandInput{
 		UserName: "yamada",
