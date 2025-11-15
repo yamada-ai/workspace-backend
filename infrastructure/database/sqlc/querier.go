@@ -17,6 +17,7 @@ type Querier interface {
 	FindUserByID(ctx context.Context, id int32) (User, error)
 	FindUserByName(ctx context.Context, name string) (User, error)
 	FindUserByNameForUpdate(ctx context.Context, name string) (User, error)
+	GetActiveSessions(ctx context.Context) ([]GetActiveSessionsRow, error)
 	ListUserSessions(ctx context.Context, arg ListUserSessionsParams) ([]Session, error)
 	UpdateSessionPlannedEnd(ctx context.Context, arg UpdateSessionPlannedEndParams) (Session, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

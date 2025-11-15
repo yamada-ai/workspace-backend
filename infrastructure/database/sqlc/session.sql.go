@@ -131,6 +131,71 @@ func (q *Queries) FindSessionByID(ctx context.Context, id int32) (Session, error
 	return i, err
 }
 
+const getActiveSessions = `-- name: GetActiveSessions :many
+SELECT
+  s.id,
+  s.user_id,
+  s.work_name,
+  s.start_time,
+  s.planned_end,
+  s.actual_end,
+  s.icon_id,
+  s.created_at,
+  s.updated_at,
+  u.name as user_name,
+  u.tier as user_tier
+FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.actual_end IS NULL
+ORDER BY s.start_time DESC
+`
+
+type GetActiveSessionsRow struct {
+	ID         int32            `json:"id"`
+	UserID     int32            `json:"user_id"`
+	WorkName   pgtype.Text      `json:"work_name"`
+	StartTime  pgtype.Timestamp `json:"start_time"`
+	PlannedEnd pgtype.Timestamp `json:"planned_end"`
+	ActualEnd  pgtype.Timestamp `json:"actual_end"`
+	IconID     pgtype.Int4      `json:"icon_id"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
+	UserName   string           `json:"user_name"`
+	UserTier   int32            `json:"user_tier"`
+}
+
+func (q *Queries) GetActiveSessions(ctx context.Context) ([]GetActiveSessionsRow, error) {
+	rows, err := q.db.Query(ctx, getActiveSessions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetActiveSessionsRow{}
+	for rows.Next() {
+		var i GetActiveSessionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.WorkName,
+			&i.StartTime,
+			&i.PlannedEnd,
+			&i.ActualEnd,
+			&i.IconID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserName,
+			&i.UserTier,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserSessions = `-- name: ListUserSessions :many
 SELECT id, user_id, work_name, start_time, planned_end, actual_end, icon_id, created_at, updated_at
 FROM sessions

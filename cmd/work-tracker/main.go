@@ -20,6 +20,7 @@ import (
 	"github.com/yamada-ai/workspace-backend/presentation/http/handler"
 	"github.com/yamada-ai/workspace-backend/presentation/ws"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
+	"github.com/yamada-ai/workspace-backend/usecase/query"
 )
 
 func main() {
@@ -62,9 +63,12 @@ func main() {
 
 	// 4. Create Use Cases (inject WebSocket hub as broadcaster)
 	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub)
+	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepository)
 
 	// 5. Create HTTP Handlers
 	commandHandler := handler.NewCommandHandler(joinUsecase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
+	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 	wsHandler := ws.NewHandler(wsHub)
 
 	// 6. Setup Router
@@ -80,7 +84,7 @@ func main() {
 	r.Get("/ws", wsHandler.ServeWS)
 
 	// Register OpenAPI-generated routes
-	handlerFunc := dto.HandlerFromMux(commandHandler, r)
+	handlerFunc := dto.HandlerFromMux(unifiedHandler, r)
 
 	// Create HTTP server
 	server := &http.Server{

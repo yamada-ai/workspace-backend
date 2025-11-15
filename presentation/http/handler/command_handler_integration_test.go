@@ -18,6 +18,7 @@ import (
 	"github.com/yamada-ai/workspace-backend/presentation/http/dto"
 	"github.com/yamada-ai/workspace-backend/presentation/http/handler"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
+	"github.com/yamada-ai/workspace-backend/usecase/query"
 )
 
 func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
@@ -34,11 +35,15 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	userRepo := repository.NewUserRepositoryWithPool(pool)
 	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
+
 	commandHandler := handler.NewCommandHandler(joinUseCase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
+	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 
 	// Setup router
 	r := chi.NewRouter()
-	handlerFunc := dto.HandlerFromMux(commandHandler, r)
+	handlerFunc := dto.HandlerFromMux(unifiedHandler, r)
 
 	// Create test server
 	server := httptest.NewServer(handlerFunc)
@@ -356,11 +361,15 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	userRepo := repository.NewUserRepositoryWithPool(pool)
 	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
+
 	commandHandler := handler.NewCommandHandler(joinUseCase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
+	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 
 	// Setup router
 	r := chi.NewRouter()
-	handlerFunc := dto.HandlerFromMux(commandHandler, r)
+	handlerFunc := dto.HandlerFromMux(unifiedHandler, r)
 
 	// Create test server
 	server := httptest.NewServer(handlerFunc)

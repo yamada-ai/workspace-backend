@@ -210,3 +210,33 @@ func toDomainSession(session sqlc.Session) *domain.Session {
 		UpdatedAt:  session.UpdatedAt.Time,
 	}
 }
+
+// FindAllActive retrieves all active sessions with user information
+func (r *sessionRepositoryImpl) FindAllActive(ctx context.Context) ([]domain.SessionInfo, error) {
+	rows, err := r.queries.GetActiveSessions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.SessionInfo, 0, len(rows))
+	for _, row := range rows {
+		var iconID *int64
+		if row.IconID.Valid {
+			id := int64(row.IconID.Int32)
+			iconID = &id
+		}
+
+		result = append(result, domain.SessionInfo{
+			SessionID:  int64(row.ID),
+			UserID:     int64(row.UserID),
+			UserName:   row.UserName,
+			WorkName:   row.WorkName.String,
+			Tier:       int(row.UserTier),
+			IconID:     iconID,
+			StartTime:  row.StartTime.Time,
+			PlannedEnd: row.PlannedEnd.Time,
+		})
+	}
+
+	return result, nil
+}

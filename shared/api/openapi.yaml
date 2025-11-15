@@ -22,6 +22,25 @@ paths:
                 type: string
                 example: ok
 
+  /api/sessions/active:
+    get:
+      summary: Get all active sessions
+      operationId: getActiveSessions
+      description: Retrieves all currently active sessions with user information
+      responses:
+        '200':
+          description: List of active sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSessionsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/commands/join:
     post:
       summary: Join command (/in)
@@ -110,6 +129,66 @@ components:
           format: date-time
           description: Planned end time
           example: 2025-10-09T15:30:00Z
+
+    SessionInfo:
+      type: object
+      required:
+        - session_id
+        - user_id
+        - user_name
+        - work_name
+        - tier
+        - start_time
+        - planned_end
+      properties:
+        session_id:
+          type: integer
+          format: int64
+          description: Session ID
+          example: 123
+        user_id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 45
+        user_name:
+          type: string
+          description: User name
+          example: yamada
+        work_name:
+          type: string
+          description: Work description
+          example: 論文執筆
+        tier:
+          type: integer
+          description: User tier (1, 2, or 3)
+          example: 1
+        icon_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: Icon ID (optional)
+          example: 5
+        start_time:
+          type: string
+          format: date-time
+          description: Session start time
+          example: 2025-10-09T14:30:00Z
+        planned_end:
+          type: string
+          format: date-time
+          description: Planned end time
+          example: 2025-10-09T15:30:00Z
+
+    ActiveSessionsResponse:
+      type: object
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionInfo'
 
     ErrorResponse:
       type: object

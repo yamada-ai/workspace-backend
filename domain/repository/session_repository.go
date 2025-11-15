@@ -33,4 +33,7 @@ type SessionRepository interface {
 
 	// CreateWithTx creates a new session within a transaction
 	CreateWithTx(ctx context.Context, tx Tx, session *domain.Session) error
+
+	// FindAllActive retrieves all active sessions with user information
+	FindAllActive(ctx context.Context) ([]domain.SessionInfo, error)
 }

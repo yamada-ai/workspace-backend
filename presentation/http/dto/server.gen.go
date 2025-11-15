@@ -11,6 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// ActiveSessionsResponse defines model for ActiveSessionsResponse.
+type ActiveSessionsResponse struct {
+	Sessions []SessionInfo `json:"sessions"`
+}
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	// Error Error message
@@ -44,6 +49,33 @@ type JoinCommandResponse struct {
 	WorkName *string `json:"work_name,omitempty"`
 }
 
+// SessionInfo defines model for SessionInfo.
+type SessionInfo struct {
+	// IconId Icon ID (optional)
+	IconId *int64 `json:"icon_id"`
+
+	// PlannedEnd Planned end time
+	PlannedEnd time.Time `json:"planned_end"`
+
+	// SessionId Session ID
+	SessionId int64 `json:"session_id"`
+
+	// StartTime Session start time
+	StartTime time.Time `json:"start_time"`
+
+	// Tier User tier (1, 2, or 3)
+	Tier int `json:"tier"`
+
+	// UserId User ID
+	UserId int64 `json:"user_id"`
+
+	// UserName User name
+	UserName string `json:"user_name"`
+
+	// WorkName Work description
+	WorkName string `json:"work_name"`
+}
+
 // JoinCommandJSONRequestBody defines body for JoinCommand for application/json ContentType.
 type JoinCommandJSONRequestBody = JoinCommandRequest
 
@@ -52,6 +84,9 @@ type ServerInterface interface {
 	// Join command (/in)
 	// (POST /api/commands/join)
 	JoinCommand(w http.ResponseWriter, r *http.Request)
+	// Get all active sessions
+	// (GET /api/sessions/active)
+	GetActiveSessions(w http.ResponseWriter, r *http.Request)
 	// Health check endpoint
 	// (GET /health)
 	HealthCheck(w http.ResponseWriter, r *http.Request)
@@ -64,6 +99,12 @@ type Unimplemented struct{}
 // Join command (/in)
 // (POST /api/commands/join)
 func (_ Unimplemented) JoinCommand(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get all active sessions
+// (GET /api/sessions/active)
+func (_ Unimplemented) GetActiveSessions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -87,6 +128,20 @@ func (siw *ServerInterfaceWrapper) JoinCommand(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.JoinCommand(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetActiveSessions operation middleware
+func (siw *ServerInterfaceWrapper) GetActiveSessions(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetActiveSessions(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -225,6 +280,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/commands/join", wrapper.JoinCommand)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/sessions/active", wrapper.GetActiveSessions)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.HealthCheck)

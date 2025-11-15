@@ -100,6 +100,7 @@ type mockSessionRepository struct {
 	listByUserIDFn             func(ctx context.Context, userID int64, limit, offset int32) ([]*domain.Session, error)
 	findActiveByUserIDWithTxFn func(ctx context.Context, tx repository.Tx, userID int64) (*domain.Session, error)
 	createWithTxFn             func(ctx context.Context, tx repository.Tx, session *domain.Session) error
+	findAllActiveFn            func(ctx context.Context) ([]domain.SessionInfo, error)
 }
 
 func (m *mockSessionRepository) Save(ctx context.Context, session *domain.Session) error {
@@ -168,6 +169,13 @@ func (m *mockSessionRepository) CreateWithTx(ctx context.Context, tx repository.
 		session.ID = 100
 	}
 	return nil
+}
+
+func (m *mockSessionRepository) FindAllActive(ctx context.Context) ([]domain.SessionInfo, error) {
+	if m.findAllActiveFn != nil {
+		return m.findAllActiveFn(ctx)
+	}
+	return []domain.SessionInfo{}, nil
 }
 
 // Tests

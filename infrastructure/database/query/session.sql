@@ -34,3 +34,21 @@ FROM sessions
 WHERE user_id = $1
 ORDER BY start_time DESC
 LIMIT $2 OFFSET $3;
+
+-- name: GetActiveSessions :many
+SELECT
+  s.id,
+  s.user_id,
+  s.work_name,
+  s.start_time,
+  s.planned_end,
+  s.actual_end,
+  s.icon_id,
+  s.created_at,
+  s.updated_at,
+  u.name as user_name,
+  u.tier as user_tier
+FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.actual_end IS NULL
+ORDER BY s.start_time DESC;
