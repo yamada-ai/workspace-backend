@@ -56,5 +56,17 @@ services:
       - work-tracker
     restart: unless-stopped
 
+  nginx:
+    image: nginx:alpine
+    container_name: workspace-dev-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - work-tracker
+      - frontend
+    restart: unless-stopped
+
 volumes:
   db-data:
