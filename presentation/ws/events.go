@@ -18,15 +18,15 @@ type BaseEvent struct {
 
 // SessionStartEvent is sent when a user starts a work session
 type SessionStartEvent struct {
-	Type        EventType `json:"type"`
-	ID          int64     `json:"id"`
-	UserID      int64     `json:"user_id"`
-	UserName    string    `json:"user_name"`
-	WorkName    string    `json:"work_name"`
-	Tier        int       `json:"tier"`
-	Icon        *string   `json:"icon,omitempty"`
-	StartTime   time.Time `json:"start_time"`
-	PlannedEnd  time.Time `json:"planned_end"`
+	Type       EventType `json:"type"`
+	ID         int64     `json:"id"`
+	UserID     int64     `json:"user_id"`
+	UserName   string    `json:"user_name"`
+	WorkName   string    `json:"work_name"`
+	Tier       int       `json:"tier"`
+	Icon       *string   `json:"icon,omitempty"`
+	StartTime  time.Time `json:"start_time"`
+	PlannedEnd time.Time `json:"planned_end"`
 }
 
 // SessionEndEvent is sent when a user ends their work session

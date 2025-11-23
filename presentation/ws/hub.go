@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/yamada-ai/workspace-backend/usecase/command"
 )
 
@@ -155,7 +156,7 @@ func (c *Client) WritePump() {
 		message, ok := <-c.send
 		if !ok {
 			// The hub closed the channel
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
 
