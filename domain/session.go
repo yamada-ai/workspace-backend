@@ -100,6 +100,17 @@ func (s *Session) Duration(now func() time.Time) time.Duration {
 	return t().Sub(s.StartTime)
 }
 
+// ChangeWorkName 作業名を変更する
+func (s *Session) ChangeWorkName(workName string, now func() time.Time) error {
+	if !s.IsActive() {
+		return ErrSessionAlreadyCompleted
+	}
+
+	s.WorkName = workName
+	s.Touch(now)
+	return nil
+}
+
 // Touch updated_atのタイムスタンプを更新する
 func (s *Session) Touch(now func() time.Time) {
 	t := time.Now

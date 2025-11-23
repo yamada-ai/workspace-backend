@@ -13,6 +13,7 @@ from twitchAPI.type import AuthScope
 from app.commands.in_command import handle_in_command
 from app.commands.out_command import handle_out_command
 from app.commands.more_command import handle_more_command
+from app.commands.change_command import handle_change_command
 from app.api.work_tracker_client import AlreadyInSessionError
 
 load_dotenv()
@@ -226,6 +227,21 @@ async def main():
                 log.exception("!more command failed")
                 await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
                               f"@{user_name} コマンドの処理に失敗しました。有効なセッションがない可能性があります。",
+                              reply_to=message_id)
+
+        if msg.startswith("!change"):
+            try:
+                result = await handle_change_command(user_name, msg)
+                # 成功時のメッセージ
+                work_display = f'"{result.work_name}"' if result.work_name else "作業"
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} {work_display}を開始しました",
+                              reply_to=message_id)
+            except Exception as e:
+                # エラー時のメッセージ（ユーザー未登録、有効なセッションなし等）
+                log.exception("!change command failed")
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} 入室していません",
                               reply_to=message_id)
 
     await es.listen_channel_chat_message(

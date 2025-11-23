@@ -11,9 +11,10 @@ import (
 
 // CommandHandler handles command-related HTTP requests
 type CommandHandler struct {
-	joinUseCase *command.JoinCommandUseCase
-	outUseCase  *command.OutCommandUseCase
-	moreUseCase *command.MoreCommandUseCase
+	joinUseCase   *command.JoinCommandUseCase
+	outUseCase    *command.OutCommandUseCase
+	moreUseCase   *command.MoreCommandUseCase
+	changeUseCase *command.ChangeCommandUseCase
 }
 
 // NewCommandHandler creates a new command handler
@@ -21,11 +22,13 @@ func NewCommandHandler(
 	joinUseCase *command.JoinCommandUseCase,
 	outUseCase *command.OutCommandUseCase,
 	moreUseCase *command.MoreCommandUseCase,
+	changeUseCase *command.ChangeCommandUseCase,
 ) *CommandHandler {
 	return &CommandHandler{
-		joinUseCase: joinUseCase,
-		outUseCase:  outUseCase,
-		moreUseCase: moreUseCase,
+		joinUseCase:   joinUseCase,
+		outUseCase:    outUseCase,
+		moreUseCase:   moreUseCase,
+		changeUseCase: changeUseCase,
 	}
 }
 
@@ -183,6 +186,59 @@ func (h *CommandHandler) MoreCommand(w http.ResponseWriter, r *http.Request) {
 		UserId:     output.UserID,
 		Minutes:    output.Minutes,
 		PlannedEnd: output.PlannedEnd,
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ChangeCommand handles POST /api/commands/change
+func (h *CommandHandler) ChangeCommand(w http.ResponseWriter, r *http.Request) {
+	// Parse request body
+	var req dto.ChangeCommandRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// Validate user_name
+	if req.UserName == "" {
+		writeError(w, http.StatusBadRequest, "user_name is required")
+		return
+	}
+
+	// Prepare usecase input
+	input := command.ChangeCommandInput{
+		UserName:    req.UserName,
+		NewWorkName: req.NewWorkName,
+	}
+
+	// Execute usecase
+	output, err := h.changeUseCase.Execute(r.Context(), input)
+	if err != nil {
+		// Handle user not found error
+		if err == domain.ErrUserNotFound {
+			writeError(w, http.StatusNotFound, "ユーザーが見つかりません。")
+			return
+		}
+		// Handle no active session error
+		if err == domain.ErrSessionNotFound {
+			writeError(w, http.StatusNotFound, "有効なセッションが見つかりません。")
+			return
+		}
+		// Handle session already completed error
+		if err == domain.ErrSessionAlreadyCompleted {
+			writeError(w, http.StatusBadRequest, "既に完了したセッションです。")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Failed to change work name: "+err.Error())
+		return
+	}
+
+	// Convert to response
+	resp := dto.ChangeCommandResponse{
+		SessionId: output.SessionID,
+		UserId:    output.UserID,
+		WorkName:  output.WorkName,
 	}
 
 	writeJSON(w, http.StatusOK, resp)

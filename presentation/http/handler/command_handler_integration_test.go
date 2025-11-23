@@ -42,7 +42,8 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 
-	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase)
+	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase, changeUseCase)
 	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 
@@ -372,7 +373,8 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 
-	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase)
+	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase, changeUseCase)
 	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 

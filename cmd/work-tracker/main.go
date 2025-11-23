@@ -75,10 +75,11 @@ func main() {
 	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub, expirationManager)
 	outUseCase := command.NewOutCommandUseCase(userRepository, sessionRepository, completeSessionService, expirationManager)
 	moreUseCase := command.NewMoreCommandUseCase(userRepository, sessionRepository, expirationManager)
+	changeUseCase := command.NewChangeCommandUseCase(userRepository, sessionRepository, wsHub)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepository)
 
 	// 7. Create HTTP Handlers
-	commandHandler := handler.NewCommandHandler(joinUsecase, outUseCase, moreUseCase)
+	commandHandler := handler.NewCommandHandler(joinUsecase, outUseCase, moreUseCase, changeUseCase)
 	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 	wsHandler := ws.NewHandler(wsHub)

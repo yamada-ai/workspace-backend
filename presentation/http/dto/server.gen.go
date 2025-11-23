@@ -16,6 +16,27 @@ type ActiveSessionsResponse struct {
 	Sessions []SessionInfo `json:"sessions"`
 }
 
+// ChangeCommandRequest defines model for ChangeCommandRequest.
+type ChangeCommandRequest struct {
+	// NewWorkName New work name (can be empty)
+	NewWorkName string `json:"new_work_name"`
+
+	// UserName User name from Twitch/YouTube
+	UserName string `json:"user_name"`
+}
+
+// ChangeCommandResponse defines model for ChangeCommandResponse.
+type ChangeCommandResponse struct {
+	// SessionId Session ID
+	SessionId int64 `json:"session_id"`
+
+	// UserId User ID
+	UserId int64 `json:"user_id"`
+
+	// WorkName New work name
+	WorkName string `json:"work_name"`
+}
+
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
 	// Error Error message
@@ -118,6 +139,9 @@ type SessionInfo struct {
 	WorkName string `json:"work_name"`
 }
 
+// ChangeCommandJSONRequestBody defines body for ChangeCommand for application/json ContentType.
+type ChangeCommandJSONRequestBody = ChangeCommandRequest
+
 // JoinCommandJSONRequestBody defines body for JoinCommand for application/json ContentType.
 type JoinCommandJSONRequestBody = JoinCommandRequest
 
@@ -129,6 +153,9 @@ type OutCommandJSONRequestBody = OutCommandRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Change command (/change)
+	// (POST /api/commands/change)
+	ChangeCommand(w http.ResponseWriter, r *http.Request)
 	// Join command (/in)
 	// (POST /api/commands/join)
 	JoinCommand(w http.ResponseWriter, r *http.Request)
@@ -149,6 +176,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Change command (/change)
+// (POST /api/commands/change)
+func (_ Unimplemented) ChangeCommand(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Join command (/in)
 // (POST /api/commands/join)
@@ -188,6 +221,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ChangeCommand operation middleware
+func (siw *ServerInterfaceWrapper) ChangeCommand(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangeCommand(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // JoinCommand operation middleware
 func (siw *ServerInterfaceWrapper) JoinCommand(w http.ResponseWriter, r *http.Request) {
@@ -372,6 +419,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/commands/change", wrapper.ChangeCommand)
+	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/commands/join", wrapper.JoinCommand)
 	})

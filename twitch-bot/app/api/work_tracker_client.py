@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 
 from .generated.workspace_backend_api_client import Client
-from .generated.workspace_backend_api_client.api.default import join_command, out_command, more_command
+from .generated.workspace_backend_api_client.api.default import join_command, out_command, more_command, change_command
 from .generated.workspace_backend_api_client.models import (
     JoinCommandRequest,
     JoinCommandResponse,
@@ -11,6 +11,8 @@ from .generated.workspace_backend_api_client.models import (
     OutCommandResponse,
     MoreCommandRequest,
     MoreCommandResponse,
+    ChangeCommandRequest,
+    ChangeCommandResponse,
     ErrorResponse,
 )
 
@@ -186,4 +188,54 @@ async def send_more_command(user_name: str, minutes: int):
 
     except Exception as e:
         logger.error(f"[MORE失敗] {e}")
+        raise
+
+
+async def send_change_command(user_name: str, new_work_name: str):
+    """
+    `/change` コマンドで作業名を変更する
+
+    Args:
+        user_name: Twitch/YouTube のユーザー名
+        new_work_name: 新しい作業名（空文字列も許可）
+
+    Returns:
+        ChangeCommandResponse オブジェクト
+
+    Raises:
+        RuntimeError: ユーザー未登録、有効なセッションなし、その他のエラー
+    """
+    client = Client(base_url=WORK_TRACKER_URL)
+
+    request = ChangeCommandRequest(user_name=user_name, new_work_name=new_work_name)
+
+    logger.info(f"POST {WORK_TRACKER_URL}/api/commands/change request={request}")
+
+    try:
+        # asyncio_detailed を使ってステータスコードを確認
+        detailed_response = await change_command.asyncio_detailed(client=client, body=request)
+
+        if detailed_response.status_code == 200:
+            response = detailed_response.parsed
+            if isinstance(response, ChangeCommandResponse):
+                logger.info(f"Work name changed: session_id={response.session_id}, work_name={response.work_name}")
+                return response
+            else:
+                logger.error("[CHANGE失敗] Unexpected response type for 200 OK")
+                raise RuntimeError("Unexpected response type for 200 OK")
+
+        elif detailed_response.status_code == 404:
+            error_response = detailed_response.parsed
+            error_msg = error_response.error if isinstance(error_response, ErrorResponse) else "User not found or no active session"
+            logger.warning(f"[CHANGE失敗] {error_msg}")
+            raise RuntimeError(error_msg)
+
+        else:
+            error_response = detailed_response.parsed
+            error_msg = error_response.error if isinstance(error_response, ErrorResponse) else "Unknown error"
+            logger.error(f"[CHANGE失敗] Status {detailed_response.status_code}: {error_msg}")
+            raise RuntimeError(f"Server returned {detailed_response.status_code}: {error_msg}")
+
+    except Exception as e:
+        logger.error(f"[CHANGE失敗] {e}")
         raise
