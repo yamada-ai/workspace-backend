@@ -74,10 +74,11 @@ func main() {
 	// 6. Create Use Cases (inject dependencies)
 	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub, expirationManager)
 	outUseCase := command.NewOutCommandUseCase(userRepository, sessionRepository, completeSessionService, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepository, sessionRepository, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepository)
 
 	// 7. Create HTTP Handlers
-	commandHandler := handler.NewCommandHandler(joinUsecase, outUseCase)
+	commandHandler := handler.NewCommandHandler(joinUsecase, outUseCase, moreUseCase)
 	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 	wsHandler := ws.NewHandler(wsHub)

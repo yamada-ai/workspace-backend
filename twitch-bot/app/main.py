@@ -12,6 +12,7 @@ from twitchAPI.type import AuthScope
 
 from app.commands.in_command import handle_in_command
 from app.commands.out_command import handle_out_command
+from app.commands.more_command import handle_more_command
 from app.api.work_tracker_client import AlreadyInSessionError
 
 load_dotenv()
@@ -204,6 +205,25 @@ async def main():
             except Exception as e:
                 # エラー時のメッセージ（ユーザー未登録、有効なセッションなし等）
                 log.exception("!out command failed")
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} コマンドの処理に失敗しました。有効なセッションがない可能性があります。",
+                              reply_to=message_id)
+
+        if msg.startswith("!more"):
+            try:
+                result = await handle_more_command(user_name, msg)
+                # 成功時のメッセージ
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} 作業時間を{result.minutes}分延長しました！",
+                              reply_to=message_id)
+            except ValueError as e:
+                # 無効な引数
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} {str(e)}",
+                              reply_to=message_id)
+            except Exception as e:
+                # その他のエラー（ユーザー未登録、有効なセッションなし等）
+                log.exception("!more command failed")
                 await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
                               f"@{user_name} コマンドの処理に失敗しました。有効なセッションがない可能性があります。",
                               reply_to=message_id)

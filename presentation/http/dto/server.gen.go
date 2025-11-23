@@ -49,6 +49,30 @@ type JoinCommandResponse struct {
 	WorkName *string `json:"work_name,omitempty"`
 }
 
+// MoreCommandRequest defines model for MoreCommandRequest.
+type MoreCommandRequest struct {
+	// Minutes Extension duration in minutes (1-360)
+	Minutes int `json:"minutes"`
+
+	// UserName User name from Twitch/YouTube
+	UserName string `json:"user_name"`
+}
+
+// MoreCommandResponse defines model for MoreCommandResponse.
+type MoreCommandResponse struct {
+	// Minutes Extended duration in minutes
+	Minutes int `json:"minutes"`
+
+	// PlannedEnd New planned end time after extension
+	PlannedEnd time.Time `json:"planned_end"`
+
+	// SessionId Extended session ID
+	SessionId int64 `json:"session_id"`
+
+	// UserId User ID
+	UserId int64 `json:"user_id"`
+}
+
 // OutCommandRequest defines model for OutCommandRequest.
 type OutCommandRequest struct {
 	// UserName User name from Twitch/YouTube
@@ -97,6 +121,9 @@ type SessionInfo struct {
 // JoinCommandJSONRequestBody defines body for JoinCommand for application/json ContentType.
 type JoinCommandJSONRequestBody = JoinCommandRequest
 
+// MoreCommandJSONRequestBody defines body for MoreCommand for application/json ContentType.
+type MoreCommandJSONRequestBody = MoreCommandRequest
+
 // OutCommandJSONRequestBody defines body for OutCommand for application/json ContentType.
 type OutCommandJSONRequestBody = OutCommandRequest
 
@@ -105,6 +132,9 @@ type ServerInterface interface {
 	// Join command (/in)
 	// (POST /api/commands/join)
 	JoinCommand(w http.ResponseWriter, r *http.Request)
+	// More command (/more)
+	// (POST /api/commands/more)
+	MoreCommand(w http.ResponseWriter, r *http.Request)
 	// Out command (/out)
 	// (POST /api/commands/out)
 	OutCommand(w http.ResponseWriter, r *http.Request)
@@ -123,6 +153,12 @@ type Unimplemented struct{}
 // Join command (/in)
 // (POST /api/commands/join)
 func (_ Unimplemented) JoinCommand(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// More command (/more)
+// (POST /api/commands/more)
+func (_ Unimplemented) MoreCommand(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -158,6 +194,20 @@ func (siw *ServerInterfaceWrapper) JoinCommand(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.JoinCommand(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MoreCommand operation middleware
+func (siw *ServerInterfaceWrapper) MoreCommand(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MoreCommand(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -324,6 +374,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/commands/join", wrapper.JoinCommand)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/commands/more", wrapper.MoreCommand)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/commands/out", wrapper.OutCommand)

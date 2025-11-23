@@ -57,6 +57,18 @@ func (m *SessionExpirationManager) CancelExpiration(sessionID int64) {
 	}
 }
 
+// RescheduleExpiration reschedules a session expiration to a new planned end time
+// This is used when a user extends their session with /more command
+func (m *SessionExpirationManager) RescheduleExpiration(sessionID int64, userID int64, newPlannedEnd time.Time) {
+	// Cancel existing timer
+	m.CancelExpiration(sessionID)
+
+	// Schedule new timer
+	m.ScheduleExpiration(sessionID, userID, newPlannedEnd)
+
+	log.Printf("⏰ Rescheduled expiration for session %d to %v", sessionID, newPlannedEnd)
+}
+
 // handleExpiration is called when a session reaches its planned end time
 func (m *SessionExpirationManager) handleExpiration(sessionID int64, userID int64) {
 	ctx := context.Background()
