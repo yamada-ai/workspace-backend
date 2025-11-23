@@ -12,12 +12,17 @@ import (
 // CommandHandler handles command-related HTTP requests
 type CommandHandler struct {
 	joinUseCase *command.JoinCommandUseCase
+	outUseCase  *command.OutCommandUseCase
 }
 
 // NewCommandHandler creates a new command handler
-func NewCommandHandler(joinUseCase *command.JoinCommandUseCase) *CommandHandler {
+func NewCommandHandler(
+	joinUseCase *command.JoinCommandUseCase,
+	outUseCase *command.OutCommandUseCase,
+) *CommandHandler {
 	return &CommandHandler{
 		joinUseCase: joinUseCase,
+		outUseCase:  outUseCase,
 	}
 }
 
@@ -68,6 +73,53 @@ func (h *CommandHandler) JoinCommand(w http.ResponseWriter, r *http.Request) {
 	}
 	if output.WorkName != "" {
 		resp.WorkName = &output.WorkName
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// OutCommand handles POST /api/commands/out
+func (h *CommandHandler) OutCommand(w http.ResponseWriter, r *http.Request) {
+	// Parse request body
+	var req dto.OutCommandRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// Validate user_name
+	if req.UserName == "" {
+		writeError(w, http.StatusBadRequest, "user_name is required")
+		return
+	}
+
+	// Prepare usecase input
+	input := command.OutCommandInput{
+		UserName: req.UserName,
+	}
+
+	// Execute usecase
+	output, err := h.outUseCase.Execute(r.Context(), input)
+	if err != nil {
+		// Handle user not found error
+		if err == domain.ErrUserNotFound {
+			writeError(w, http.StatusNotFound, "ユーザーが見つかりません。")
+			return
+		}
+		// Handle no active session error
+		if err == domain.ErrSessionNotFound {
+			writeError(w, http.StatusNotFound, "有効なセッションが見つかりません。")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Failed to leave: "+err.Error())
+		return
+	}
+
+	// Convert to response
+	resp := dto.OutCommandResponse{
+		SessionId: output.SessionID,
+		UserId:    output.UserID,
+		ActualEnd: output.ActualEnd,
 	}
 
 	writeJSON(w, http.StatusOK, resp)

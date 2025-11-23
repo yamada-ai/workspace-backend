@@ -11,6 +11,7 @@ from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.type import AuthScope
 
 from app.commands.in_command import handle_in_command
+from app.commands.out_command import handle_out_command
 from app.api.work_tracker_client import AlreadyInSessionError
 
 load_dotenv()
@@ -191,6 +192,20 @@ async def main():
                 log.exception("!in command failed")
                 await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
                               f"@{user_name} コマンドの処理に失敗しました。",
+                              reply_to=message_id)
+
+        if msg.startswith("!out"):
+            try:
+                result = await handle_out_command(user_name)
+                # 成功時のメッセージ
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} 作業を終了しました。お疲れ様でした！",
+                              reply_to=message_id)
+            except Exception as e:
+                # エラー時のメッセージ（ユーザー未登録、有効なセッションなし等）
+                log.exception("!out command failed")
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} コマンドの処理に失敗しました。有効なセッションがない可能性があります。",
                               reply_to=message_id)
 
     await es.listen_channel_chat_message(

@@ -63,10 +63,11 @@ func main() {
 
 	// 4. Create Use Cases (inject WebSocket hub as broadcaster)
 	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub)
+	outUseCase := command.NewOutCommandUseCase(userRepository, sessionRepository, wsHub)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepository)
 
 	// 5. Create HTTP Handlers
-	commandHandler := handler.NewCommandHandler(joinUsecase)
+	commandHandler := handler.NewCommandHandler(joinUsecase, outUseCase)
 	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 	wsHandler := ws.NewHandler(wsHub)

@@ -78,6 +78,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/commands/out:
+    post:
+      summary: Out command (/out)
+      operationId: outCommand
+      description: User leaves the workspace and ends their work session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutCommandRequest'
+      responses:
+        '200':
+          description: Successfully left
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutCommandResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found or no active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     JoinCommandRequest:
@@ -129,6 +166,41 @@ components:
           format: date-time
           description: Planned end time
           example: 2025-10-09T15:30:00Z
+
+    OutCommandRequest:
+      type: object
+      required:
+        - user_name
+      properties:
+        user_name:
+          type: string
+          description: User name from Twitch/YouTube
+          minLength: 1
+          maxLength: 100
+          example: yamada
+
+    OutCommandResponse:
+      type: object
+      required:
+        - session_id
+        - user_id
+        - actual_end
+      properties:
+        session_id:
+          type: integer
+          format: int64
+          description: Ended session ID
+          example: 123
+        user_id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 45
+        actual_end:
+          type: string
+          format: date-time
+          description: Session actual end time
+          example: 2025-10-09T15:25:00Z
 
     SessionInfo:
       type: object

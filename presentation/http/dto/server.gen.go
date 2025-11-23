@@ -49,6 +49,24 @@ type JoinCommandResponse struct {
 	WorkName *string `json:"work_name,omitempty"`
 }
 
+// OutCommandRequest defines model for OutCommandRequest.
+type OutCommandRequest struct {
+	// UserName User name from Twitch/YouTube
+	UserName string `json:"user_name"`
+}
+
+// OutCommandResponse defines model for OutCommandResponse.
+type OutCommandResponse struct {
+	// ActualEnd Session actual end time
+	ActualEnd time.Time `json:"actual_end"`
+
+	// SessionId Ended session ID
+	SessionId int64 `json:"session_id"`
+
+	// UserId User ID
+	UserId int64 `json:"user_id"`
+}
+
 // SessionInfo defines model for SessionInfo.
 type SessionInfo struct {
 	// IconId Icon ID (optional)
@@ -79,11 +97,17 @@ type SessionInfo struct {
 // JoinCommandJSONRequestBody defines body for JoinCommand for application/json ContentType.
 type JoinCommandJSONRequestBody = JoinCommandRequest
 
+// OutCommandJSONRequestBody defines body for OutCommand for application/json ContentType.
+type OutCommandJSONRequestBody = OutCommandRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Join command (/in)
 	// (POST /api/commands/join)
 	JoinCommand(w http.ResponseWriter, r *http.Request)
+	// Out command (/out)
+	// (POST /api/commands/out)
+	OutCommand(w http.ResponseWriter, r *http.Request)
 	// Get all active sessions
 	// (GET /api/sessions/active)
 	GetActiveSessions(w http.ResponseWriter, r *http.Request)
@@ -99,6 +123,12 @@ type Unimplemented struct{}
 // Join command (/in)
 // (POST /api/commands/join)
 func (_ Unimplemented) JoinCommand(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Out command (/out)
+// (POST /api/commands/out)
+func (_ Unimplemented) OutCommand(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -128,6 +158,20 @@ func (siw *ServerInterfaceWrapper) JoinCommand(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.JoinCommand(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// OutCommand operation middleware
+func (siw *ServerInterfaceWrapper) OutCommand(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.OutCommand(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -280,6 +324,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/commands/join", wrapper.JoinCommand)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/commands/out", wrapper.OutCommand)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/sessions/active", wrapper.GetActiveSessions)
