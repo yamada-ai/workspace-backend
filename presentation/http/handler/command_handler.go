@@ -13,16 +13,19 @@ import (
 type CommandHandler struct {
 	joinUseCase *command.JoinCommandUseCase
 	outUseCase  *command.OutCommandUseCase
+	moreUseCase *command.MoreCommandUseCase
 }
 
 // NewCommandHandler creates a new command handler
 func NewCommandHandler(
 	joinUseCase *command.JoinCommandUseCase,
 	outUseCase *command.OutCommandUseCase,
+	moreUseCase *command.MoreCommandUseCase,
 ) *CommandHandler {
 	return &CommandHandler{
 		joinUseCase: joinUseCase,
 		outUseCase:  outUseCase,
+		moreUseCase: moreUseCase,
 	}
 }
 
@@ -120,6 +123,66 @@ func (h *CommandHandler) OutCommand(w http.ResponseWriter, r *http.Request) {
 		SessionId: output.SessionID,
 		UserId:    output.UserID,
 		ActualEnd: output.ActualEnd,
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// MoreCommand handles POST /api/commands/more
+func (h *CommandHandler) MoreCommand(w http.ResponseWriter, r *http.Request) {
+	// Parse request body
+	var req dto.MoreCommandRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	// Validate user_name
+	if req.UserName == "" {
+		writeError(w, http.StatusBadRequest, "user_name is required")
+		return
+	}
+
+	// Validate minutes
+	if req.Minutes < command.MinExtensionMinutes || req.Minutes > command.MaxExtensionMinutes {
+		writeError(w, http.StatusBadRequest, "minutes must be between 1 and 360")
+		return
+	}
+
+	// Prepare usecase input
+	input := command.MoreCommandInput{
+		UserName: req.UserName,
+		Minutes:  req.Minutes,
+	}
+
+	// Execute usecase
+	output, err := h.moreUseCase.Execute(r.Context(), input)
+	if err != nil {
+		// Handle user not found error
+		if err == domain.ErrUserNotFound {
+			writeError(w, http.StatusNotFound, "ユーザーが見つかりません。")
+			return
+		}
+		// Handle no active session error
+		if err == domain.ErrSessionNotFound {
+			writeError(w, http.StatusNotFound, "有効なセッションが見つかりません。")
+			return
+		}
+		// Handle invalid extension error
+		if err == domain.ErrInvalidExtension {
+			writeError(w, http.StatusBadRequest, "無効な延長時間です。")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Failed to extend session: "+err.Error())
+		return
+	}
+
+	// Convert to response
+	resp := dto.MoreCommandResponse{
+		SessionId:  output.SessionID,
+		UserId:     output.UserID,
+		Minutes:    output.Minutes,
+		PlannedEnd: output.PlannedEnd,
 	}
 
 	writeJSON(w, http.StatusOK, resp)
