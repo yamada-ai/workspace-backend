@@ -21,6 +21,7 @@ import (
 	"github.com/yamada-ai/workspace-backend/presentation/ws"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
 	"github.com/yamada-ai/workspace-backend/usecase/query"
+	"github.com/yamada-ai/workspace-backend/usecase/session"
 )
 
 func main() {
@@ -61,18 +62,27 @@ func main() {
 	wsHub := ws.NewHub()
 	go wsHub.Run() // Start hub in background goroutine
 
-	// 4. Create Use Cases (inject WebSocket hub as broadcaster)
-	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub)
-	outUseCase := command.NewOutCommandUseCase(userRepository, sessionRepository, wsHub)
+	// 4. Create Session Services
+	completeSessionService := session.NewCompleteSessionService(sessionRepository, wsHub)
+	expirationManager := session.NewSessionExpirationManager(sessionRepository, completeSessionService)
+
+	// 5. Initialize session expiration timers from database
+	if err := expirationManager.InitializeFromDatabase(ctx); err != nil {
+		log.Fatalf("Failed to initialize session expiration timers: %v", err)
+	}
+
+	// 6. Create Use Cases (inject dependencies)
+	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub, expirationManager)
+	outUseCase := command.NewOutCommandUseCase(userRepository, sessionRepository, completeSessionService, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepository)
 
-	// 5. Create HTTP Handlers
+	// 7. Create HTTP Handlers
 	commandHandler := handler.NewCommandHandler(joinUsecase, outUseCase)
 	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 	wsHandler := ws.NewHandler(wsHub)
 
-	// 6. Setup Router
+	// 8. Setup Router
 	r := chi.NewRouter()
 
 	// Middleware

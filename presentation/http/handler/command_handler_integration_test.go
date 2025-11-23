@@ -19,6 +19,7 @@ import (
 	"github.com/yamada-ai/workspace-backend/presentation/http/handler"
 	"github.com/yamada-ai/workspace-backend/usecase/command"
 	"github.com/yamada-ai/workspace-backend/usecase/query"
+	"github.com/yamada-ai/workspace-backend/usecase/session"
 )
 
 func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
@@ -34,8 +35,10 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	// Create dependencies
 	userRepo := repository.NewUserRepositoryWithPool(pool)
 	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
-	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
-	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	completeService := session.NewCompleteSessionService(sessionRepo, command.NoOpBroadcaster{})
+	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
+	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
+	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 
 	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase)
@@ -361,8 +364,10 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	// Create dependencies
 	userRepo := repository.NewUserRepositoryWithPool(pool)
 	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
-	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
-	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	completeService := session.NewCompleteSessionService(sessionRepo, command.NoOpBroadcaster{})
+	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
+	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
+	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 
 	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase)

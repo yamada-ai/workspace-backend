@@ -29,12 +29,18 @@ type JoinCommandOutput struct {
 	IsNewUser  bool
 }
 
+// ExpirationScheduler defines the interface for scheduling session expiration
+type ExpirationScheduler interface {
+	ScheduleExpiration(sessionID int64, userID int64, plannedEnd time.Time)
+}
+
 // JoinCommandUseCase handles the /in command logic
 type JoinCommandUseCase struct {
-	userRepository    repository.UserRepository
-	sessionRepository repository.SessionRepository
-	broadcaster       EventBroadcaster
-	now               func() time.Time
+	userRepository      repository.UserRepository
+	sessionRepository   repository.SessionRepository
+	broadcaster         EventBroadcaster
+	expirationScheduler ExpirationScheduler
+	now                 func() time.Time
 }
 
 // NewJoinCommandUseCase creates a new join command use case
@@ -42,12 +48,14 @@ func NewJoinCommandUseCase(
 	userRepository repository.UserRepository,
 	sessionRepository repository.SessionRepository,
 	broadcaster EventBroadcaster,
+	expirationScheduler ExpirationScheduler,
 ) *JoinCommandUseCase {
 	return &JoinCommandUseCase{
-		userRepository:    userRepository,
-		sessionRepository: sessionRepository,
-		broadcaster:       broadcaster,
-		now:               time.Now,
+		userRepository:      userRepository,
+		sessionRepository:   sessionRepository,
+		broadcaster:         broadcaster,
+		expirationScheduler: expirationScheduler,
+		now:                 time.Now,
 	}
 }
 
@@ -125,6 +133,9 @@ func (uc *JoinCommandUseCase) Execute(ctx context.Context, input JoinCommandInpu
 		StartTime:  session.StartTime,
 		PlannedEnd: session.PlannedEnd,
 	})
+
+	// Schedule automatic expiration
+	uc.expirationScheduler.ScheduleExpiration(session.ID, user.ID, session.PlannedEnd)
 
 	return &JoinCommandOutput{
 		SessionID:  session.ID,

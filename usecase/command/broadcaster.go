@@ -32,3 +32,16 @@ type NoOpBroadcaster struct{}
 
 func (NoOpBroadcaster) BroadcastSessionStart(event SessionStartBroadcast) {}
 func (NoOpBroadcaster) BroadcastSessionEnd(event SessionEndBroadcast)     {}
+
+// NoOpExpirationScheduler is a no-op implementation of ExpirationScheduler
+// Useful for testing
+type NoOpExpirationScheduler struct{}
+
+func (NoOpExpirationScheduler) ScheduleExpiration(sessionID int64, userID int64, plannedEnd time.Time) {
+}
+
+// NoOpExpirationCanceller is a no-op implementation of ExpirationCanceller
+// Useful for testing
+type NoOpExpirationCanceller struct{}
+
+func (NoOpExpirationCanceller) CancelExpiration(sessionID int64) {}

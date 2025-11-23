@@ -4,8 +4,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/yamada-ai/workspace-backend/domain"
 	"github.com/yamada-ai/workspace-backend/domain/repository"
 )
+
+// CompleteSessionService defines the interface for completing sessions
+type CompleteSessionService interface {
+	CompleteSession(ctx context.Context, session *domain.Session, userID int64) error
+}
+
+// ExpirationCanceller defines the interface for cancelling session expiration
+type ExpirationCanceller interface {
+	CancelExpiration(sessionID int64)
+}
 
 // OutCommandInput represents the input for out command
 type OutCommandInput struct {
@@ -21,23 +32,24 @@ type OutCommandOutput struct {
 
 // OutCommandUseCase handles the /out command logic
 type OutCommandUseCase struct {
-	userRepository    repository.UserRepository
-	sessionRepository repository.SessionRepository
-	broadcaster       EventBroadcaster
-	now               func() time.Time
+	userRepository      repository.UserRepository
+	sessionRepository   repository.SessionRepository
+	completeService     CompleteSessionService
+	expirationCanceller ExpirationCanceller
 }
 
 // NewOutCommandUseCase creates a new out command use case
 func NewOutCommandUseCase(
 	userRepository repository.UserRepository,
 	sessionRepository repository.SessionRepository,
-	broadcaster EventBroadcaster,
+	completeService CompleteSessionService,
+	expirationCanceller ExpirationCanceller,
 ) *OutCommandUseCase {
 	return &OutCommandUseCase{
-		userRepository:    userRepository,
-		sessionRepository: sessionRepository,
-		broadcaster:       broadcaster,
-		now:               time.Now,
+		userRepository:      userRepository,
+		sessionRepository:   sessionRepository,
+		completeService:     completeService,
+		expirationCanceller: expirationCanceller,
 	}
 }
 
@@ -55,22 +67,13 @@ func (uc *OutCommandUseCase) Execute(ctx context.Context, input OutCommandInput)
 		return nil, err
 	}
 
-	// 3. Complete the session
-	if err := session.Complete(uc.now); err != nil {
+	// 3. Complete the session using shared service (Complete + Update + Broadcast)
+	if err := uc.completeService.CompleteSession(ctx, session, user.ID); err != nil {
 		return nil, err
 	}
 
-	// 4. Update session in database
-	if err := uc.sessionRepository.Update(ctx, session); err != nil {
-		return nil, err
-	}
-
-	// 5. Broadcast session end event to all connected WebSocket clients
-	uc.broadcaster.BroadcastSessionEnd(SessionEndBroadcast{
-		SessionID: session.ID,
-		UserID:    user.ID,
-		ActualEnd: *session.ActualEnd,
-	})
+	// 4. Cancel the automatic expiration timer
+	uc.expirationCanceller.CancelExpiration(session.ID)
 
 	return &OutCommandOutput{
 		SessionID: session.ID,
