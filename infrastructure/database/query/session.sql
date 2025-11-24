@@ -22,6 +22,12 @@ SET planned_end = $2, updated_at = $3
 WHERE id = $1
 RETURNING id, user_id, work_name, start_time, planned_end, actual_end, icon_id, created_at, updated_at;
 
+-- name: UpdateSessionWorkName :one
+UPDATE sessions
+SET work_name = $2, updated_at = $3
+WHERE id = $1
+RETURNING id, user_id, work_name, start_time, planned_end, actual_end, icon_id, created_at, updated_at;
+
 -- name: CompleteSession :one
 UPDATE sessions
 SET actual_end = $2, updated_at = $3

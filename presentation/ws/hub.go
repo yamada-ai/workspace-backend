@@ -110,6 +110,17 @@ func (h *Hub) BroadcastSessionEnd(event command.SessionEndBroadcast) {
 	h.Broadcast(wsEvent)
 }
 
+// BroadcastWorkNameChange implements command.WorkNameChangeBroadcaster
+func (h *Hub) BroadcastWorkNameChange(event command.WorkNameChangeBroadcast) {
+	wsEvent := WorkNameChangeEvent{
+		Type:     EventTypeWorkNameChange,
+		ID:       event.SessionID,
+		UserID:   event.UserID,
+		WorkName: event.WorkName,
+	}
+	h.Broadcast(wsEvent)
+}
+
 // Client represents a WebSocket client
 type Client struct {
 	hub  *Hub

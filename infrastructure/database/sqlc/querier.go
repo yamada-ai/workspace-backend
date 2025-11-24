@@ -20,6 +20,7 @@ type Querier interface {
 	GetActiveSessions(ctx context.Context) ([]GetActiveSessionsRow, error)
 	ListUserSessions(ctx context.Context, arg ListUserSessionsParams) ([]Session, error)
 	UpdateSessionPlannedEnd(ctx context.Context, arg UpdateSessionPlannedEndParams) (Session, error)
+	UpdateSessionWorkName(ctx context.Context, arg UpdateSessionWorkNameParams) (Session, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 

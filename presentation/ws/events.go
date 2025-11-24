@@ -6,9 +6,10 @@ import "time"
 type EventType string
 
 const (
-	EventTypeSessionStart  EventType = "session_start"
-	EventTypeSessionEnd    EventType = "session_end"
-	EventTypeSessionExtend EventType = "session_extend"
+	EventTypeSessionStart   EventType = "session_start"
+	EventTypeSessionEnd     EventType = "session_end"
+	EventTypeSessionExtend  EventType = "session_extend"
+	EventTypeWorkNameChange EventType = "work_name_change"
 )
 
 // BaseEvent contains common fields for all events
@@ -45,12 +46,21 @@ type SessionExtendEvent struct {
 	NewPlannedEnd time.Time `json:"new_planned_end"`
 }
 
+// WorkNameChangeEvent is sent when a user changes their work name
+type WorkNameChangeEvent struct {
+	Type     EventType `json:"type"`
+	ID       int64     `json:"id"`
+	UserID   int64     `json:"user_id"`
+	WorkName string    `json:"work_name"`
+}
+
 // Event is a union type of all possible WebSocket events
 type Event interface {
 	isEvent()
 }
 
 // Implement marker methods
-func (SessionStartEvent) isEvent()  {}
-func (SessionEndEvent) isEvent()    {}
-func (SessionExtendEvent) isEvent() {}
+func (SessionStartEvent) isEvent()   {}
+func (SessionEndEvent) isEvent()     {}
+func (SessionExtendEvent) isEvent()  {}
+func (WorkNameChangeEvent) isEvent() {}
