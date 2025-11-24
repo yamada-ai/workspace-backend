@@ -15,10 +15,10 @@ type GetUserInfoInput struct {
 
 // GetUserInfoOutput represents the output of GetUserInfo query
 type GetUserInfoOutput struct {
-	UserID              int64 `json:"user_id"`
-	RemainingMinutes    int   `json:"remaining_minutes"`
-	TodayTotalMinutes   int   `json:"today_total_minutes"`
-	LifetimeTotalMinutes int  `json:"lifetime_total_minutes"`
+	UserID               int64 `json:"user_id"`
+	RemainingMinutes     int   `json:"remaining_minutes"`
+	TodayTotalMinutes    int   `json:"today_total_minutes"`
+	LifetimeTotalMinutes int   `json:"lifetime_total_minutes"`
 }
 
 // GetUserInfoUseCase handles retrieving user session information
@@ -85,9 +85,9 @@ func (uc *GetUserInfoUseCase) Execute(ctx context.Context, input GetUserInfoInpu
 	lifetimeTotalMinutes := calculateTotalMinutes(allSessions, currentTime)
 
 	return &GetUserInfoOutput{
-		UserID:              user.ID,
-		RemainingMinutes:    remainingMinutes,
-		TodayTotalMinutes:   todayTotalMinutes,
+		UserID:               user.ID,
+		RemainingMinutes:     remainingMinutes,
+		TodayTotalMinutes:    todayTotalMinutes,
 		LifetimeTotalMinutes: lifetimeTotalMinutes,
 	}, nil
 }

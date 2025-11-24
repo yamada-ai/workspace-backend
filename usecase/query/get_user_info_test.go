@@ -197,7 +197,7 @@ func ptrTime(t time.Time) *time.Time {
 }
 
 // Mock implementations
-type mockUserRepository struct{
+type mockUserRepository struct {
 	findByNameFn func(ctx context.Context, name string) (*domain.User, error)
 }
 
