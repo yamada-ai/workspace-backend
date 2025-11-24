@@ -27,11 +27,19 @@ type WorkNameChangeBroadcast struct {
 	WorkName  string
 }
 
+// SessionExtendBroadcast represents the data to broadcast when a session is extended
+type SessionExtendBroadcast struct {
+	SessionID     int64
+	UserID        int64
+	NewPlannedEnd time.Time
+}
+
 // EventBroadcaster is an interface for broadcasting events to clients
 type EventBroadcaster interface {
 	BroadcastSessionStart(event SessionStartBroadcast)
 	BroadcastSessionEnd(event SessionEndBroadcast)
 	BroadcastWorkNameChange(event WorkNameChangeBroadcast)
+	BroadcastSessionExtend(event SessionExtendBroadcast)
 }
 
 // NoOpBroadcaster is a no-op implementation of EventBroadcaster
@@ -41,6 +49,7 @@ type NoOpBroadcaster struct{}
 func (NoOpBroadcaster) BroadcastSessionStart(event SessionStartBroadcast)     {}
 func (NoOpBroadcaster) BroadcastSessionEnd(event SessionEndBroadcast)         {}
 func (NoOpBroadcaster) BroadcastWorkNameChange(event WorkNameChangeBroadcast) {}
+func (NoOpBroadcaster) BroadcastSessionExtend(event SessionExtendBroadcast)   {}
 
 // NoOpExpirationScheduler is a no-op implementation of ExpirationScheduler
 // Useful for testing

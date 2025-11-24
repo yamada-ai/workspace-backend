@@ -39,7 +39,7 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
 	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
-	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
 
@@ -371,7 +371,7 @@ func TestCommandHandler_InfoCommand_E2E(t *testing.T) {
 	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
 	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
-	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
 	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
@@ -509,7 +509,7 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
 	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
 	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
-	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
 	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
 
@@ -580,6 +580,173 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 
 		// Verify database state: should have 2 sessions (1 completed, 1 active)
 		testutil.AssertSessionCount(t, pool, response1.UserId, 2)
+	})
+}
+
+func TestCommandHandler_MoreCommand_E2E(t *testing.T) {
+	// Skip integration tests when running with -short flag
+	if testing.Short() {
+		t.Skip("Skipping E2E test")
+	}
+
+	// Setup test database
+	pool := testutil.SetupTestDB(t)
+	testutil.CleanupTables(t, pool)
+
+	// Create dependencies
+	userRepo := repository.NewUserRepositoryWithPool(pool)
+	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
+	completeService := session.NewCompleteSessionService(sessionRepo, command.NoOpBroadcaster{})
+	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
+	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
+	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
+	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
+	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
+
+	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase, changeUseCase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase, getUserInfoUseCase)
+	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
+
+	// Setup router
+	r := chi.NewRouter()
+	handlerFunc := dto.HandlerFromMux(unifiedHandler, r)
+
+	// Create test server
+	server := httptest.NewServer(handlerFunc)
+	defer server.Close()
+
+	t.Run("ExtendSession_Success", func(t *testing.T) {
+		testutil.CleanupTables(t, pool)
+
+		// Create user and active session via join command
+		joinReqBody := dto.JoinCommandRequest{
+			UserName: "more_test_user",
+			WorkName: stringPtr("テスト作業"),
+		}
+		joinBodyBytes, _ := json.Marshal(joinReqBody)
+
+		// Join first
+		joinResp, err := http.Post(
+			server.URL+"/api/commands/join",
+			"application/json",
+			bytes.NewReader(joinBodyBytes),
+		)
+		if err != nil {
+			t.Fatalf("Failed to join: %v", err)
+		}
+		defer func() { _ = joinResp.Body.Close() }()
+
+		if joinResp.StatusCode != http.StatusOK {
+			t.Fatalf("Join failed with status %d", joinResp.StatusCode)
+		}
+
+		var joinResponse dto.JoinCommandResponse
+		if err := json.NewDecoder(joinResp.Body).Decode(&joinResponse); err != nil {
+			t.Fatalf("Failed to decode join response: %v", err)
+		}
+
+		originalPlannedEnd := joinResponse.PlannedEnd
+
+		// Extend session by 30 minutes
+		moreReqBody := dto.MoreCommandRequest{
+			UserName: "more_test_user",
+			Minutes:  30,
+		}
+		moreBodyBytes, _ := json.Marshal(moreReqBody)
+
+		moreResp, err := http.Post(
+			server.URL+"/api/commands/more",
+			"application/json",
+			bytes.NewReader(moreBodyBytes),
+		)
+		if err != nil {
+			t.Fatalf("Failed to extend: %v", err)
+		}
+		defer func() { _ = moreResp.Body.Close() }()
+
+		// Check status code
+		if moreResp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", moreResp.StatusCode)
+		}
+
+		// Parse response
+		var response dto.MoreCommandResponse
+		if err := json.NewDecoder(moreResp.Body).Decode(&response); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		// Verify response
+		if response.SessionId != joinResponse.SessionId {
+			t.Errorf("Expected session_id %d, got %d", joinResponse.SessionId, response.SessionId)
+		}
+		if response.Minutes != 30 {
+			t.Errorf("Expected minutes to be 30, got %d", response.Minutes)
+		}
+
+		// Verify that planned_end was extended by 30 minutes
+		// PostgreSQL stores timestamps with microsecond precision, so we truncate to microseconds
+		expectedPlannedEnd := originalPlannedEnd.Add(30 * time.Minute).Truncate(time.Microsecond)
+		actualPlannedEnd := response.PlannedEnd.Truncate(time.Microsecond)
+		if !actualPlannedEnd.Equal(expectedPlannedEnd) {
+			t.Errorf("Expected planned_end to be %v, got %v", expectedPlannedEnd, actualPlannedEnd)
+		}
+	})
+
+	t.Run("ExtendSession_UserNotFound", func(t *testing.T) {
+		testutil.CleanupTables(t, pool)
+
+		// Try to extend for non-existent user
+		moreReqBody := dto.MoreCommandRequest{
+			UserName: "nonexistent_user",
+			Minutes:  30,
+		}
+		bodyBytes, _ := json.Marshal(moreReqBody)
+
+		moreResp, err := http.Post(
+			server.URL+"/api/commands/more",
+			"application/json",
+			bytes.NewReader(bodyBytes),
+		)
+		if err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+		defer func() { _ = moreResp.Body.Close() }()
+
+		// Should return 404
+		if moreResp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404, got %d", moreResp.StatusCode)
+		}
+	})
+
+	t.Run("ExtendSession_NoActiveSession", func(t *testing.T) {
+		testutil.CleanupTables(t, pool)
+
+		// Create user without active session
+		testutil.CreateTestUser(t, pool, "inactive_user", 1)
+
+		// Try to extend session
+		moreReqBody := dto.MoreCommandRequest{
+			UserName: "inactive_user",
+			Minutes:  30,
+		}
+		bodyBytes, _ := json.Marshal(moreReqBody)
+
+		moreResp, err := http.Post(
+			server.URL+"/api/commands/more",
+			"application/json",
+			bytes.NewReader(bodyBytes),
+		)
+		if err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+		defer func() { _ = moreResp.Body.Close() }()
+
+		// Should return 404
+		if moreResp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404, got %d", moreResp.StatusCode)
+		}
 	})
 }
 
