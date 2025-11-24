@@ -178,6 +178,10 @@ func (m *mockSessionRepository) FindAllActive(ctx context.Context) ([]domain.Ses
 	return []domain.SessionInfo{}, nil
 }
 
+func (m *mockSessionRepository) FindByUserIDAndDateRange(ctx context.Context, userID int64, startTime, endTime time.Time) ([]*domain.Session, error) {
+	return nil, nil
+}
+
 // Tests
 func TestJoinCommand_NewUser(t *testing.T) {
 	userRepository := &mockUserRepository{}

@@ -14,6 +14,7 @@ from app.commands.in_command import handle_in_command
 from app.commands.out_command import handle_out_command
 from app.commands.more_command import handle_more_command
 from app.commands.change_command import handle_change_command
+from app.commands.info_command import handle_info_command
 from app.api.work_tracker_client import AlreadyInSessionError
 
 load_dotenv()
@@ -240,6 +241,20 @@ async def main():
             except Exception as e:
                 # エラー時のメッセージ（ユーザー未登録、有効なセッションなし等）
                 log.exception("!change command failed")
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name} 入室していません",
+                              reply_to=message_id)
+
+        if msg.startswith("!info"):
+            try:
+                result = await handle_info_command(user_name)
+                # 成功時のメッセージ
+                await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
+                              f"@{user_name}さん→退出まで:{result.remaining_minutes}分/今日の累計作業時間:{result.today_total_minutes}分/累計作業時間:{result.lifetime_total_minutes}分",
+                              reply_to=message_id)
+            except Exception as e:
+                # エラー時のメッセージ（ユーザー未登録、アクティブセッションなし等）
+                log.exception("!info command failed")
                 await send_chat(http, token_mgr, broadcaster_id, bot_user_id,
                               f"@{user_name} 入室していません",
                               reply_to=message_id)

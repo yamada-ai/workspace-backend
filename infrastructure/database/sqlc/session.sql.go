@@ -240,6 +240,51 @@ func (q *Queries) ListUserSessions(ctx context.Context, arg ListUserSessionsPara
 	return items, nil
 }
 
+const listUserSessionsForDate = `-- name: ListUserSessionsForDate :many
+SELECT id, user_id, work_name, start_time, planned_end, actual_end, icon_id, created_at, updated_at
+FROM sessions
+WHERE user_id = $1
+  AND start_time >= $2
+  AND start_time < $3
+ORDER BY start_time DESC
+`
+
+type ListUserSessionsForDateParams struct {
+	UserID      int32            `json:"user_id"`
+	StartTime   pgtype.Timestamp `json:"start_time"`
+	StartTime_2 pgtype.Timestamp `json:"start_time_2"`
+}
+
+func (q *Queries) ListUserSessionsForDate(ctx context.Context, arg ListUserSessionsForDateParams) ([]Session, error) {
+	rows, err := q.db.Query(ctx, listUserSessionsForDate, arg.UserID, arg.StartTime, arg.StartTime_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Session{}
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.WorkName,
+			&i.StartTime,
+			&i.PlannedEnd,
+			&i.ActualEnd,
+			&i.IconID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateSessionPlannedEnd = `-- name: UpdateSessionPlannedEnd :one
 UPDATE sessions
 SET planned_end = $2, updated_at = $3

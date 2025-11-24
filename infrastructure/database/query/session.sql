@@ -58,3 +58,11 @@ FROM sessions s
 JOIN users u ON s.user_id = u.id
 WHERE s.actual_end IS NULL
 ORDER BY s.start_time DESC;
+
+-- name: ListUserSessionsForDate :many
+SELECT id, user_id, work_name, start_time, planned_end, actual_end, icon_id, created_at, updated_at
+FROM sessions
+WHERE user_id = $1
+  AND start_time >= $2
+  AND start_time < $3
+ORDER BY start_time DESC;

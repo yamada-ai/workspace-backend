@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ActiveSessionsResponse defines model for ActiveSessionsResponse.
@@ -139,6 +140,21 @@ type SessionInfo struct {
 	WorkName string `json:"work_name"`
 }
 
+// UserInfoResponse defines model for UserInfoResponse.
+type UserInfoResponse struct {
+	// LifetimeTotalMinutes Total work minutes across all time
+	LifetimeTotalMinutes int `json:"lifetime_total_minutes"`
+
+	// RemainingMinutes Minutes remaining until planned end time
+	RemainingMinutes int `json:"remaining_minutes"`
+
+	// TodayTotalMinutes Total work minutes for today
+	TodayTotalMinutes int `json:"today_total_minutes"`
+
+	// UserId User ID
+	UserId int64 `json:"user_id"`
+}
+
 // ChangeCommandJSONRequestBody defines body for ChangeCommand for application/json ContentType.
 type ChangeCommandJSONRequestBody = ChangeCommandRequest
 
@@ -168,6 +184,9 @@ type ServerInterface interface {
 	// Get all active sessions
 	// (GET /api/sessions/active)
 	GetActiveSessions(w http.ResponseWriter, r *http.Request)
+	// Get user info (/info)
+	// (GET /api/users/{user_name}/info)
+	GetUserInfo(w http.ResponseWriter, r *http.Request, userName string)
 	// Health check endpoint
 	// (GET /health)
 	HealthCheck(w http.ResponseWriter, r *http.Request)
@@ -204,6 +223,12 @@ func (_ Unimplemented) OutCommand(w http.ResponseWriter, r *http.Request) {
 // Get all active sessions
 // (GET /api/sessions/active)
 func (_ Unimplemented) GetActiveSessions(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get user info (/info)
+// (GET /api/users/{user_name}/info)
+func (_ Unimplemented) GetUserInfo(w http.ResponseWriter, r *http.Request, userName string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -283,6 +308,31 @@ func (siw *ServerInterfaceWrapper) GetActiveSessions(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetActiveSessions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUserInfo operation middleware
+func (siw *ServerInterfaceWrapper) GetUserInfo(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "user_name" -------------
+	var userName string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_name", chi.URLParam(r, "user_name"), &userName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUserInfo(w, r, userName)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -433,6 +483,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/sessions/active", wrapper.GetActiveSessions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/users/{user_name}/info", wrapper.GetUserInfo)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.HealthCheck)

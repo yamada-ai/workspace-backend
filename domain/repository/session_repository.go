@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/yamada-ai/workspace-backend/domain"
 )
@@ -27,6 +28,9 @@ type SessionRepository interface {
 
 	// ListByUserID retrieves sessions for a user with pagination
 	ListByUserID(ctx context.Context, userID int64, limit, offset int32) ([]*domain.Session, error)
+
+	// FindByUserIDAndDateRange retrieves sessions for a user within a date range
+	FindByUserIDAndDateRange(ctx context.Context, userID int64, startTime, endTime time.Time) ([]*domain.Session, error)
 
 	// FindActiveByUserIDWithTx retrieves the active session within a transaction
 	FindActiveByUserIDWithTx(ctx context.Context, tx Tx, userID int64) (*domain.Session, error)
