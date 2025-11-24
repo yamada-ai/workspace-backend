@@ -56,3 +56,6 @@ wheels/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Generated sprites (placeholder images for development)
+sprites_placeholder/

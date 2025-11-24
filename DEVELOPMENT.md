@@ -7,6 +7,8 @@
 - golang-migrate CLI
 - sqlc
 - oapi-codegen
+- Docker & Docker Compose (for MinIO)
+- Python 3.10+ (for sprite generation scripts)
 
 ## Quick Start
 
@@ -42,6 +44,58 @@ make migrate-up
 # 4. Start server
 DATABASE_URL='postgres://postgres:postgres@localhost:5432/workspace?sslmode=disable' \
   go run cmd/work-tracker/main.go
+```
+
+## MinIO Setup (Object Storage for Sprites)
+
+### Start MinIO
+
+```bash
+# Start MinIO using docker-compose
+docker-compose up -d minio
+
+# MinIO API: http://localhost:9000
+# MinIO Console (Web UI): http://localhost:9001
+# Login: minioadmin / minioadmin
+```
+
+### Generate and Upload Placeholder Sprites
+
+```bash
+# 1. Install Python dependencies
+pip3 install Pillow minio
+
+# 2. Generate placeholder sprite sheets
+python3 scripts/generate_placeholder_sprites.py
+# Generates 120 sprite files (4 tiers × 10 icons × 3 motions)
+# Output: sprites_placeholder/*.png
+
+# 3. Upload sprites to MinIO
+python3 scripts/upload_sprites_to_minio.py
+# Uploads all sprites to MinIO bucket 'sprites'
+```
+
+### Sprite Naming Convention
+
+```
+Format: tier{tierNum}-{iconId}_{motion_key}.png
+Examples:
+  - tier1-01_sleep.png
+  - tier1-02_dance.png
+  - tier2-05_happy.png
+
+Layout: Horizontal strip (1×N frames, 32px×32px per frame)
+Default: 4 frames = 128px × 32px total
+```
+
+### Access Sprites
+
+```bash
+# Direct URL format
+http://localhost:9000/sprites/tier1-01_sleep.png
+
+# Test sprite access
+curl -I http://localhost:9000/sprites/tier1-01_sleep.png
 ```
 
 ## API Testing
