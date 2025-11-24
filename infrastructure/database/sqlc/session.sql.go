@@ -269,3 +269,33 @@ func (q *Queries) UpdateSessionPlannedEnd(ctx context.Context, arg UpdateSession
 	)
 	return i, err
 }
+
+const updateSessionWorkName = `-- name: UpdateSessionWorkName :one
+UPDATE sessions
+SET work_name = $2, updated_at = $3
+WHERE id = $1
+RETURNING id, user_id, work_name, start_time, planned_end, actual_end, icon_id, created_at, updated_at
+`
+
+type UpdateSessionWorkNameParams struct {
+	ID        int32            `json:"id"`
+	WorkName  pgtype.Text      `json:"work_name"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) UpdateSessionWorkName(ctx context.Context, arg UpdateSessionWorkNameParams) (Session, error) {
+	row := q.db.QueryRow(ctx, updateSessionWorkName, arg.ID, arg.WorkName, arg.UpdatedAt)
+	var i Session
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.WorkName,
+		&i.StartTime,
+		&i.PlannedEnd,
+		&i.ActualEnd,
+		&i.IconID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

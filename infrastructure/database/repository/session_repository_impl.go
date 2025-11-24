@@ -139,16 +139,6 @@ func (r *sessionRepositoryImpl) FindActiveByUserID(ctx context.Context, userID i
 }
 
 func (r *sessionRepositoryImpl) Update(ctx context.Context, session *domain.Session) error {
-	// Update planned_end if session is being extended
-	if session.IsActive() {
-		_, err := r.queries.UpdateSessionPlannedEnd(ctx, sqlc.UpdateSessionPlannedEndParams{
-			ID:         int32(session.ID),
-			PlannedEnd: pgtype.Timestamp{Time: session.PlannedEnd, Valid: true},
-			UpdatedAt:  pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
-		})
-		return err
-	}
-
 	// Complete session if actual_end is set
 	if session.ActualEnd != nil {
 		_, err := r.queries.CompleteSession(ctx, sqlc.CompleteSessionParams{
@@ -157,6 +147,40 @@ func (r *sessionRepositoryImpl) Update(ctx context.Context, session *domain.Sess
 			UpdatedAt: pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
 		})
 		return err
+	}
+
+	// For active sessions, fetch current state to determine what changed
+	current, err := r.queries.FindSessionByID(ctx, int32(session.ID))
+	if err != nil {
+		return err
+	}
+
+	// Check if work_name changed
+	currentWorkName := ""
+	if current.WorkName.Valid {
+		currentWorkName = current.WorkName.String
+	}
+	if currentWorkName != session.WorkName {
+		_, err := r.queries.UpdateSessionWorkName(ctx, sqlc.UpdateSessionWorkNameParams{
+			ID:        int32(session.ID),
+			WorkName:  pgtype.Text{String: session.WorkName, Valid: true},
+			UpdatedAt: pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Check if planned_end changed
+	if current.PlannedEnd.Valid && !current.PlannedEnd.Time.Equal(session.PlannedEnd) {
+		_, err := r.queries.UpdateSessionPlannedEnd(ctx, sqlc.UpdateSessionPlannedEndParams{
+			ID:         int32(session.ID),
+			PlannedEnd: pgtype.Timestamp{Time: session.PlannedEnd, Valid: true},
+			UpdatedAt:  pgtype.Timestamp{Time: session.UpdatedAt, Valid: true},
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
