@@ -41,10 +41,11 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
 	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
+	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
 
 	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
 	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase, changeUseCase)
-	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase, getUserInfoUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 
 	// Setup router
@@ -353,6 +354,144 @@ func TestCommandHandler_JoinCommand_E2E(t *testing.T) {
 	})
 }
 
+func TestCommandHandler_InfoCommand_E2E(t *testing.T) {
+	// Skip integration tests when running with -short flag
+	if testing.Short() {
+		t.Skip("Skipping E2E test")
+	}
+
+	// Setup test database
+	pool := testutil.SetupTestDB(t)
+	testutil.CleanupTables(t, pool)
+
+	// Create dependencies
+	userRepo := repository.NewUserRepositoryWithPool(pool)
+	sessionRepo := repository.NewSessionRepository(sqlc.New(pool))
+	completeService := session.NewCompleteSessionService(sessionRepo, command.NoOpBroadcaster{})
+	expirationManager := session.NewSessionExpirationManager(sessionRepo, completeService)
+	joinUseCase := command.NewJoinCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{}, expirationManager)
+	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
+	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
+	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
+	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
+
+	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase, changeUseCase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase, getUserInfoUseCase)
+	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
+
+	// Setup router
+	r := chi.NewRouter()
+	handlerFunc := dto.HandlerFromMux(unifiedHandler, r)
+
+	// Create test server
+	server := httptest.NewServer(handlerFunc)
+	defer server.Close()
+
+	t.Run("GetUserInfo_WithActiveSession", func(t *testing.T) {
+		testutil.CleanupTables(t, pool)
+
+		// Create user and active session
+		joinReqBody := dto.JoinCommandRequest{
+			UserName: "info_test_user",
+			WorkName: stringPtr("テスト作業"),
+		}
+		joinBodyBytes, _ := json.Marshal(joinReqBody)
+
+		// Join first
+		joinResp, err := http.Post(
+			server.URL+"/api/commands/join",
+			"application/json",
+			bytes.NewReader(joinBodyBytes),
+		)
+		if err != nil {
+			t.Fatalf("Failed to join: %v", err)
+		}
+		defer func() { _ = joinResp.Body.Close() }()
+
+		if joinResp.StatusCode != http.StatusOK {
+			t.Fatalf("Join failed with status %d", joinResp.StatusCode)
+		}
+
+		// Wait a moment to ensure time passes
+		time.Sleep(100 * time.Millisecond)
+
+		// Get user info
+		infoResp, err := http.Get(server.URL + "/api/users/info_test_user/info")
+		if err != nil {
+			t.Fatalf("Failed to get user info: %v", err)
+		}
+		defer func() { _ = infoResp.Body.Close() }()
+
+		// Check status code
+		if infoResp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", infoResp.StatusCode)
+		}
+
+		// Parse response
+		var response dto.UserInfoResponse
+		if err := json.NewDecoder(infoResp.Body).Decode(&response); err != nil {
+			t.Fatalf("Failed to decode response: %v", err)
+		}
+
+		// Verify response
+		if response.UserId == 0 {
+			t.Error("Expected user_id to be set")
+		}
+		// Remaining minutes should be positive and reasonable (default is 60 minutes)
+		// But we allow a wide range since time calculations can vary
+		if response.RemainingMinutes <= 0 || response.RemainingMinutes > 70 {
+			t.Errorf("Expected remaining_minutes in range (0, 70], got %d", response.RemainingMinutes)
+		}
+		// Today total should be reasonable (less than a day)
+		if response.TodayTotalMinutes < 0 || response.TodayTotalMinutes > 1440 {
+			t.Errorf("Expected today_total_minutes in range [0, 1440], got %d", response.TodayTotalMinutes)
+		}
+		// Lifetime total should be reasonable
+		if response.LifetimeTotalMinutes < 0 || response.LifetimeTotalMinutes > 1440 {
+			t.Errorf("Expected lifetime_total_minutes in range [0, 1440], got %d", response.LifetimeTotalMinutes)
+		}
+		// Log the values for debugging
+		t.Logf("User info: remaining=%d, today_total=%d, lifetime_total=%d",
+			response.RemainingMinutes, response.TodayTotalMinutes, response.LifetimeTotalMinutes)
+	})
+
+	t.Run("GetUserInfo_NoActiveSession", func(t *testing.T) {
+		testutil.CleanupTables(t, pool)
+
+		// Create user without active session
+		testutil.CreateTestUser(t, pool, "inactive_user", 1)
+
+		// Try to get user info
+		infoResp, err := http.Get(server.URL + "/api/users/inactive_user/info")
+		if err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+		defer func() { _ = infoResp.Body.Close() }()
+
+		// Should return 404
+		if infoResp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404, got %d", infoResp.StatusCode)
+		}
+	})
+
+	t.Run("GetUserInfo_UserNotFound", func(t *testing.T) {
+		testutil.CleanupTables(t, pool)
+
+		// Try to get info for non-existent user
+		infoResp, err := http.Get(server.URL + "/api/users/nonexistent_user/info")
+		if err != nil {
+			t.Fatalf("Failed to send request: %v", err)
+		}
+		defer func() { _ = infoResp.Body.Close() }()
+
+		// Should return 404
+		if infoResp.StatusCode != http.StatusNotFound {
+			t.Errorf("Expected status 404, got %d", infoResp.StatusCode)
+		}
+	})
+}
+
 func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	// Skip integration tests when running with -short flag
 	if testing.Short() {
@@ -372,10 +511,11 @@ func TestCommandHandler_Integration_FullFlow(t *testing.T) {
 	outUseCase := command.NewOutCommandUseCase(userRepo, sessionRepo, completeService, expirationManager)
 	moreUseCase := command.NewMoreCommandUseCase(userRepo, sessionRepo, expirationManager)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepo)
+	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepo, sessionRepo)
 
 	changeUseCase := command.NewChangeCommandUseCase(userRepo, sessionRepo, command.NoOpBroadcaster{})
 	commandHandler := handler.NewCommandHandler(joinUseCase, outUseCase, moreUseCase, changeUseCase)
-	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase)
+	queryHandler := handler.NewQueryHandler(getActiveSessionsUseCase, getUserInfoUseCase)
 	unifiedHandler := handler.NewHandler(commandHandler, queryHandler)
 
 	// Setup router

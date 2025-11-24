@@ -43,7 +43,7 @@ func NewChangeCommandUseCase(
 		userRepository:    userRepository,
 		sessionRepository: sessionRepository,
 		broadcaster:       broadcaster,
-		now:               time.Now,
+		now:               func() time.Time { return time.Now().UTC() },
 	}
 }
 

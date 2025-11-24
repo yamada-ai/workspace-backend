@@ -203,6 +203,23 @@ func (r *sessionRepositoryImpl) ListByUserID(ctx context.Context, userID int64, 
 	return result, nil
 }
 
+func (r *sessionRepositoryImpl) FindByUserIDAndDateRange(ctx context.Context, userID int64, startTime, endTime time.Time) ([]*domain.Session, error) {
+	sessions, err := r.queries.ListUserSessionsForDate(ctx, sqlc.ListUserSessionsForDateParams{
+		UserID:      int32(userID),
+		StartTime:   pgtype.Timestamp{Time: startTime, Valid: true},
+		StartTime_2: pgtype.Timestamp{Time: endTime, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.Session, len(sessions))
+	for i, s := range sessions {
+		result[i] = toDomainSession(s)
+	}
+	return result, nil
+}
+
 // toDomainSession converts sqlc.Session to domain.Session
 func toDomainSession(session sqlc.Session) *domain.Session {
 	var workName string

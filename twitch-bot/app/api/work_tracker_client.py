@@ -4,6 +4,7 @@ from typing import Optional
 
 from .generated.workspace_backend_api_client import Client
 from .generated.workspace_backend_api_client.api.default import join_command, out_command, more_command, change_command
+from .generated.workspace_backend_api_client.api.default import get_user_info as get_user_info_api
 from .generated.workspace_backend_api_client.models import (
     JoinCommandRequest,
     JoinCommandResponse,
@@ -13,6 +14,7 @@ from .generated.workspace_backend_api_client.models import (
     MoreCommandResponse,
     ChangeCommandRequest,
     ChangeCommandResponse,
+    UserInfoResponse,
     ErrorResponse,
 )
 
@@ -238,4 +240,51 @@ async def send_change_command(user_name: str, new_work_name: str):
 
     except Exception as e:
         logger.error(f"[CHANGE失敗] {e}")
+        raise
+
+
+async def get_user_info(user_name: str):
+    """
+    `/info` コマンドでユーザーのセッション情報を取得する
+
+    Args:
+        user_name: Twitch/YouTube のユーザー名
+
+    Returns:
+        UserInfoResponse オブジェクト
+
+    Raises:
+        RuntimeError: ユーザー未登録、アクティブセッションなし、その他のエラー
+    """
+    client = Client(base_url=WORK_TRACKER_URL)
+
+    logger.info(f"GET {WORK_TRACKER_URL}/api/users/{user_name}/info")
+
+    try:
+        # asyncio_detailed を使ってステータスコードを確認
+        detailed_response = await get_user_info_api.asyncio_detailed(client=client, user_name=user_name)
+
+        if detailed_response.status_code == 200:
+            response = detailed_response.parsed
+            if isinstance(response, UserInfoResponse):
+                logger.info(f"User info retrieved: user_id={response.user_id}, remaining={response.remaining_minutes}min")
+                return response
+            else:
+                logger.error("[INFO失敗] Unexpected response type for 200 OK")
+                raise RuntimeError("Unexpected response type for 200 OK")
+
+        elif detailed_response.status_code == 404:
+            error_response = detailed_response.parsed
+            error_msg = error_response.error if isinstance(error_response, ErrorResponse) else "User not found or no active session"
+            logger.warning(f"[INFO失敗] {error_msg}")
+            raise RuntimeError(error_msg)
+
+        else:
+            error_response = detailed_response.parsed
+            error_msg = error_response.error if isinstance(error_response, ErrorResponse) else "Unknown error"
+            logger.error(f"[INFO失敗] Status {detailed_response.status_code}: {error_msg}")
+            raise RuntimeError(f"Server returned {detailed_response.status_code}: {error_msg}")
+
+    except Exception as e:
+        logger.error(f"[INFO失敗] {e}")
         raise

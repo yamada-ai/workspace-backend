@@ -55,7 +55,7 @@ func NewJoinCommandUseCase(
 		sessionRepository:   sessionRepository,
 		broadcaster:         broadcaster,
 		expirationScheduler: expirationScheduler,
-		now:                 time.Now,
+		now:                 func() time.Time { return time.Now().UTC() },
 	}
 }
 
