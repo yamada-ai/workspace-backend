@@ -52,7 +52,7 @@ func NewMoreCommandUseCase(
 		userRepository:      userRepository,
 		sessionRepository:   sessionRepository,
 		expirationScheduler: expirationScheduler,
-		now:                 time.Now,
+		now:                 func() time.Time { return time.Now().UTC() },
 	}
 }
 

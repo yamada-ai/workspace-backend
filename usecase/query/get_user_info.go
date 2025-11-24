@@ -36,7 +36,7 @@ func NewGetUserInfoUseCase(
 	return &GetUserInfoUseCase{
 		userRepository:    userRepository,
 		sessionRepository: sessionRepository,
-		now:               time.Now,
+		now:               func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -55,15 +55,17 @@ func (uc *GetUserInfoUseCase) Execute(ctx context.Context, input GetUserInfoInpu
 	}
 
 	// 3. Calculate remaining minutes until planned_end
-	currentTime := uc.now()
-	remainingDuration := activeSession.PlannedEnd.Sub(currentTime)
+	currentTime := uc.now().UTC()
+	// Ensure session times are in UTC for consistent calculations
+	activeSessionPlannedEndUTC := activeSession.PlannedEnd.UTC()
+	remainingDuration := activeSessionPlannedEndUTC.Sub(currentTime)
 	remainingMinutes := int(remainingDuration.Minutes())
 	if remainingMinutes < 0 {
 		remainingMinutes = 0 // 既に終了時刻を過ぎている場合は0分
 	}
 
 	// 4. Get today's sessions (00:00 to 23:59)
-	todayStart := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, currentTime.Location())
+	todayStart := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, time.UTC)
 	todayEnd := todayStart.Add(24 * time.Hour)
 
 	todaySessions, err := uc.sessionRepository.FindByUserIDAndDateRange(ctx, user.ID, todayStart, todayEnd)
@@ -97,12 +99,15 @@ func calculateTotalMinutes(sessions []*domain.Session, currentTime time.Time) in
 	totalMinutes := 0
 	for _, session := range sessions {
 		var duration time.Duration
+		// Ensure all times are in UTC for consistent calculations
+		startTimeUTC := session.StartTime.UTC()
 		if session.ActualEnd != nil {
 			// 完了したセッション: actual_end - start_time
-			duration = session.ActualEnd.Sub(session.StartTime)
+			actualEndUTC := session.ActualEnd.UTC()
+			duration = actualEndUTC.Sub(startTimeUTC)
 		} else if session.IsActive() {
 			// 現在アクティブなセッション: 現在時刻 - start_time
-			duration = currentTime.Sub(session.StartTime)
+			duration = currentTime.Sub(startTimeUTC)
 		}
 		// actual_end がnilでかつ非アクティブなセッションは無視（想定外だが安全のため）
 		totalMinutes += int(duration.Minutes())

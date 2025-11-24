@@ -177,7 +177,7 @@ async def main():
             except httpx.HTTPStatusError as e:
                 log.exception("send_chat failed: %s", e.response.text)
 
-        if msg.startswith("!in"):
+        if msg == "!in" or msg.startswith("!in "):
             try:
                 result = await handle_in_command(user_name, msg)
                 # 成功時のメッセージ
