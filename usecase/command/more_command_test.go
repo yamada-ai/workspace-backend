@@ -65,7 +65,7 @@ func TestMoreCommand_Success(t *testing.T) {
 		},
 	}
 
-	uc := NewMoreCommandUseCase(userRepo, sessionRepo, expirationScheduler)
+	uc := NewMoreCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{}, expirationScheduler)
 
 	input := MoreCommandInput{
 		UserName: "yamada",
@@ -107,7 +107,7 @@ func TestMoreCommand_InvalidMinutes_TooSmall(t *testing.T) {
 	sessionRepo := &mockSessionRepository{}
 	expirationScheduler := &mockExpirationRescheduler{}
 
-	uc := NewMoreCommandUseCase(userRepo, sessionRepo, expirationScheduler)
+	uc := NewMoreCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{}, expirationScheduler)
 
 	input := MoreCommandInput{
 		UserName: "yamada",
@@ -133,7 +133,7 @@ func TestMoreCommand_InvalidMinutes_TooLarge(t *testing.T) {
 	sessionRepo := &mockSessionRepository{}
 	expirationScheduler := &mockExpirationRescheduler{}
 
-	uc := NewMoreCommandUseCase(userRepo, sessionRepo, expirationScheduler)
+	uc := NewMoreCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{}, expirationScheduler)
 
 	input := MoreCommandInput{
 		UserName: "yamada",
@@ -163,7 +163,7 @@ func TestMoreCommand_UserNotFound(t *testing.T) {
 	sessionRepo := &mockSessionRepository{}
 	expirationScheduler := &mockExpirationRescheduler{}
 
-	uc := NewMoreCommandUseCase(userRepo, sessionRepo, expirationScheduler)
+	uc := NewMoreCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{}, expirationScheduler)
 
 	input := MoreCommandInput{
 		UserName: "nonexistent",
@@ -210,7 +210,7 @@ func TestMoreCommand_NoActiveSession(t *testing.T) {
 
 	expirationScheduler := &mockExpirationRescheduler{}
 
-	uc := NewMoreCommandUseCase(userRepo, sessionRepo, expirationScheduler)
+	uc := NewMoreCommandUseCase(userRepo, sessionRepo, NoOpBroadcaster{}, expirationScheduler)
 
 	input := MoreCommandInput{
 		UserName: "yamada",

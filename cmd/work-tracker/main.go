@@ -74,7 +74,7 @@ func main() {
 	// 6. Create Use Cases (inject dependencies)
 	joinUsecase := command.NewJoinCommandUseCase(userRepository, sessionRepository, wsHub, expirationManager)
 	outUseCase := command.NewOutCommandUseCase(userRepository, sessionRepository, completeSessionService, expirationManager)
-	moreUseCase := command.NewMoreCommandUseCase(userRepository, sessionRepository, expirationManager)
+	moreUseCase := command.NewMoreCommandUseCase(userRepository, sessionRepository, wsHub, expirationManager)
 	changeUseCase := command.NewChangeCommandUseCase(userRepository, sessionRepository, wsHub)
 	getActiveSessionsUseCase := query.NewGetActiveSessionsUseCase(sessionRepository)
 	getUserInfoUseCase := query.NewGetUserInfoUseCase(userRepository, sessionRepository)

@@ -38,6 +38,7 @@ type MoreCommandOutput struct {
 type MoreCommandUseCase struct {
 	userRepository      repository.UserRepository
 	sessionRepository   repository.SessionRepository
+	broadcaster         EventBroadcaster
 	expirationScheduler ExpirationRescheduler
 	now                 func() time.Time
 }
@@ -46,11 +47,13 @@ type MoreCommandUseCase struct {
 func NewMoreCommandUseCase(
 	userRepository repository.UserRepository,
 	sessionRepository repository.SessionRepository,
+	broadcaster EventBroadcaster,
 	expirationScheduler ExpirationRescheduler,
 ) *MoreCommandUseCase {
 	return &MoreCommandUseCase{
 		userRepository:      userRepository,
 		sessionRepository:   sessionRepository,
+		broadcaster:         broadcaster,
 		expirationScheduler: expirationScheduler,
 		now:                 func() time.Time { return time.Now().UTC() },
 	}
@@ -86,7 +89,14 @@ func (uc *MoreCommandUseCase) Execute(ctx context.Context, input MoreCommandInpu
 		return nil, err
 	}
 
-	// 6. Reschedule expiration timer
+	// 6. Broadcast session extension event to all connected WebSocket clients
+	uc.broadcaster.BroadcastSessionExtend(SessionExtendBroadcast{
+		SessionID:     session.ID,
+		UserID:        user.ID,
+		NewPlannedEnd: session.PlannedEnd,
+	})
+
+	// 7. Reschedule expiration timer
 	uc.expirationScheduler.RescheduleExpiration(session.ID, user.ID, session.PlannedEnd)
 
 	return &MoreCommandOutput{
